@@ -57,7 +57,8 @@ function TableOrderResolver({
   stageId: string;
   table: WithId<TableDoc>;
   advanceCount: number;
-  tieBreakRule: TieBreakRule;
+  /** Undefined for games with no automatic tie-break rule (e.g. bowling) — always falls to manual. */
+  tieBreakRule: TieBreakRule | undefined;
   manualOrder: string[] | undefined;
   playerNames: Record<string, string>;
   onResolveManual: (tableId: string, order: string[]) => void;
@@ -75,10 +76,13 @@ function TableOrderResolver({
   if (tie) {
     if (manualOrder) {
       order = spliceOrder(order, tie, manualOrder);
-    } else {
+    } else if (tieBreakRule) {
       const resolution = resolveTie(tie, roundData, tieBreakRule);
       if (resolution.resolved) order = spliceOrder(order, tie, resolution.order);
       else needsManualChoice = tie;
+    } else {
+      // No automatic rule for this game (bowling) — always ask.
+      needsManualChoice = tie;
     }
   }
 
@@ -158,8 +162,12 @@ export function AdvancementPage() {
   const remainingPlan = planRemainingTables(sortedRemaining.length);
   const remainingGroups = splitIntoGroups(sortedRemaining, remainingPlan.sizes);
 
+  const isBowling = tournament.data.game === 'bowling';
+  const winnerLabel = isBowling ? 'Vinnerbane' : 'Vinnerbord';
+  const otherLabel = isBowling ? 'Bane' : 'Bord';
+
   async function handleConfirm() {
-    if (!tournamentId || !stageId || !uid || !stage || !canPropose) return;
+    if (!tournamentId || !stageId || !uid || !stage || !tournament || !canPropose) return;
     setSaving(true);
     try {
       await updateStage(tournamentId, stageId, { status: 'complete', advanceCount: effectiveAdvanceCount });
@@ -168,34 +176,36 @@ export function AdvancementPage() {
       const willHaveMoreTables = continueRemaining && remainingGroups.length > 0;
       const newStageId = await createStage(tournamentId, {
         index: nextIndex,
-        name: willHaveMoreTables ? 'Vinnerbord og videre spill' : 'Vinnerbord',
-        roundSequence: stage.data.roundSequence,
-        syncMode: stage.data.syncMode,
-        tieBreakRule: stage.data.tieBreakRule,
+        name: willHaveMoreTables ? `${winnerLabel} og videre spill` : winnerLabel,
         status: 'active',
+        ...(isBowling
+          ? { reshuffleMode: 'GROUP_THEN_FINAL' as const, roundCount: stage.data.roundCount }
+          : { roundSequence: stage.data.roundSequence, syncMode: stage.data.syncMode, tieBreakRule: stage.data.tieBreakRule }),
       });
 
-      const winnersMax = maxCards(sortedWinners.length);
       await createTable(tournamentId, newStageId, {
-        name: 'Vinnerbord',
+        name: winnerLabel,
         playerIds: sortedWinners,
         noteTakerPlayerId: pickNoteTaker(sortedWinners, eligibleIds),
         noteTakerUid: uid,
-        cardsPerRound: buildRoundSequence(winnersMax, stage.data.roundSequence),
         status: 'active',
+        ...(isBowling
+          ? { roundCount: stage.data.roundCount ?? 1 }
+          : { cardsPerRound: buildRoundSequence(maxCards(sortedWinners.length), stage.data.roundSequence!) }),
       });
 
       if (willHaveMoreTables) {
         for (let i = 0; i < remainingGroups.length; i++) {
           const group = remainingGroups[i];
-          const max = maxCards(group.length);
           await createTable(tournamentId, newStageId, {
-            name: `Bord ${i + 2}`,
+            name: `${otherLabel} ${i + 2}`,
             playerIds: group,
             noteTakerPlayerId: pickNoteTaker(group, eligibleIds),
             noteTakerUid: uid,
-            cardsPerRound: buildRoundSequence(max, stage.data.roundSequence),
             status: 'active',
+            ...(isBowling
+              ? { roundCount: stage.data.roundCount ?? 1 }
+              : { cardsPerRound: buildRoundSequence(maxCards(group.length), stage.data.roundSequence!) }),
           });
         }
       }
@@ -213,7 +223,7 @@ export function AdvancementPage() {
       <div className="space-y-4 p-4">
         <RetroPanel>
           <label className="block text-sm font-semibold" htmlFor="advanceCount">
-            Antall som går videre per bord
+            Antall som går videre per {isBowling ? 'bane' : 'bord'}
           </label>
           <input
             id="advanceCount"
@@ -248,7 +258,9 @@ export function AdvancementPage() {
         {canPropose && (
           <>
             <RetroPanel className="bg-sage/30">
-              <p className="text-sm font-semibold">Vinnerbord ({sortedWinners.length})</p>
+              <p className="text-sm font-semibold">
+                {winnerLabel} ({sortedWinners.length})
+              </p>
               <p className="text-sm">{sortedWinners.map((id) => playerNames[id] ?? id).join(', ')}</p>
             </RetroPanel>
 
@@ -266,7 +278,10 @@ export function AdvancementPage() {
                   <div className="mt-2 space-y-2">
                     {remainingGroups.map((group, i) => (
                       <p key={i} className="text-sm">
-                        <strong>Bord {i + 2}:</strong> {group.map((id) => playerNames[id] ?? id).join(', ')}
+                        <strong>
+                          {otherLabel} {i + 2}:
+                        </strong>{' '}
+                        {group.map((id) => playerNames[id] ?? id).join(', ')}
                       </p>
                     ))}
                   </div>

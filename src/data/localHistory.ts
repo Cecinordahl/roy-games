@@ -1,12 +1,15 @@
 // There are no accounts, so "tournaments I've visited" is a per-device convenience
 // list in localStorage — not an access boundary. Anyone with the join code can still
 // open (and this list will pick up) any tournament regardless of this list's contents.
+import type { GameType } from '../domain/types';
+
 const KEY = 'roy-games:recent-tournaments';
 
 export interface RecentTournament {
   id: string;
   name: string;
   joinCode: string;
+  game?: GameType;
   visitedAt: number;
 }
 

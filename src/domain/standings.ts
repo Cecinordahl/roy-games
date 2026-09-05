@@ -24,8 +24,8 @@ export function penaltyPoints(rounds: readonly RoundLike[], playerId: string): n
 /** Sum of bids across only the rounds where the player hit their bid exactly. Higher is better. */
 export function highestSuccessfulBidTotal(rounds: readonly RoundLike[], playerId: string): number {
   return rounds.reduce((sum, round) => {
-    const bid = round.bids[playerId];
-    const tricks = round.tricks[playerId];
+    const bid = round.bids?.[playerId];
+    const tricks = round.tricks?.[playerId];
     return bid !== undefined && bid === tricks ? sum + bid : sum;
   }, 0);
 }

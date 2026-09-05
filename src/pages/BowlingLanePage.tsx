@@ -4,9 +4,9 @@ import { BackLink } from '../components/layout/BackLink';
 import { RetroButton } from '../components/layout/RetroButton';
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
-import { StandingsTable } from '../components/standings/StandingsTable';
-import { RoundEntryForm } from '../components/round/RoundEntryForm';
+import { BowlingScoreForm } from '../components/round/BowlingScoreForm';
 import { RoundList } from '../components/round/RoundList';
+import { StandingsTable } from '../components/standings/StandingsTable';
 import { saveRound } from '../data/roundsRepo';
 import { takeOverNoteTaking, updateTable } from '../data/tablesRepo';
 import { computeStandings } from '../domain/standings';
@@ -16,7 +16,7 @@ import { useRounds } from '../hooks/useRounds';
 import { useTable } from '../hooks/useTables';
 import { useTournament } from '../hooks/useTournament';
 
-export function TablePage() {
+export function BowlingLanePage() {
   const { tournamentId, stageId, tableId } = useParams<{
     tournamentId: string;
     stageId: string;
@@ -36,43 +36,38 @@ export function TablePage() {
 
   if (tournament === undefined || table === undefined) return <p className="p-4">Laster …</p>;
   if (tournament === null || table === null || !tournamentId || !stageId || !tableId) {
-    return <p className="p-4">Fant ikke bordet.</p>;
+    return <p className="p-4">Fant ikke banen.</p>;
   }
 
   const playerNames = tournament.data.playerNames;
   const isNoteTaker = !!uid && uid === table.data.noteTakerUid;
-  const cardsPerRound = table.data.cardsPerRound ?? [];
-  const totalRounds = cardsPerRound.length;
+  const totalRounds = table.data.roundCount ?? 1;
   const nextRoundNumber = rounds.length + 1;
-  const isTableComplete = table.data.status === 'complete';
+  const isLaneComplete = table.data.status === 'complete';
 
-  const editingRound = editingRoundNumber !== null ? rounds.find((r) => r.data.roundNumber === editingRoundNumber) : undefined;
-  const activeRoundNumber = editingRoundNumber ?? (isTableComplete ? null : nextRoundNumber);
-  const activeCards = activeRoundNumber !== null ? cardsPerRound[activeRoundNumber - 1] : null;
+  const editingRound =
+    editingRoundNumber !== null ? rounds.find((r) => r.data.roundNumber === editingRoundNumber) : undefined;
+  const activeRoundNumber = editingRoundNumber ?? (isLaneComplete ? null : nextRoundNumber);
 
   async function handleTakeOver() {
     if (!uid || !tournamentId || !stageId || !tableId) return;
     await takeOverNoteTaking(tournamentId, stageId, tableId, uid);
   }
 
-  async function handleSaveRound(
-    bids: Record<string, number>,
-    tricks: Record<string, number>,
-    scores: Record<string, number>,
-  ) {
-    if (!tournamentId || !stageId || !tableId || !table || activeRoundNumber === null || activeCards === null) return;
+  async function handleSaveRound(scores: Record<string, number>) {
+    if (!tournamentId || !stageId || !tableId || !table || activeRoundNumber === null) return;
 
-    if (isTableComplete && editingRoundNumber !== null) {
+    if (isLaneComplete && editingRoundNumber !== null) {
       const hypotheticalRounds = rounds.map((r) =>
-        r.data.roundNumber === editingRoundNumber ? { ...r.data, bids, tricks, scores } : r.data,
+        r.data.roundNumber === editingRoundNumber ? { ...r.data, scores } : r.data,
       );
       const before = standings.map((s) => s.playerId);
       const after = computeStandings(hypotheticalRounds, table.data.playerIds).map((s) => s.playerId);
-      const changesResult = before.some((id, i) => id !== after[i]);
-      if (changesResult) {
+      const changed = before.some((id, i) => id !== after[i]);
+      if (changed) {
         const ok = await confirm({
           title: 'Endrer sluttresultatet',
-          message: 'Denne endringen påvirker sluttresultatet for bordet. Lagre likevel?',
+          message: 'Denne endringen påvirker sluttresultatet for banen. Lagre likevel?',
           confirmLabel: 'Lagre likevel',
           danger: true,
         });
@@ -80,9 +75,9 @@ export function TablePage() {
       }
     }
 
-    await saveRound(tournamentId, stageId, tableId, activeRoundNumber, { cards: activeCards, bids, tricks, scores });
+    await saveRound(tournamentId, stageId, tableId, activeRoundNumber, { scores });
 
-    if (!isTableComplete && activeRoundNumber === totalRounds) {
+    if (!isLaneComplete && activeRoundNumber === totalRounds) {
       await updateTable(tournamentId, stageId, tableId, { status: 'complete' });
     }
     setEditingRoundNumber(null);
@@ -91,7 +86,10 @@ export function TablePage() {
   return (
     <div>
       <BackLink to={`/t/${tournamentId}`} label="Til turneringen" />
-      <ScreenHeader title={table.data.name} subtitle={`${tournament.data.name} — runde ${Math.min(rounds.length + 1, totalRounds)} av ${totalRounds}`} />
+      <ScreenHeader
+        title={table.data.name}
+        subtitle={`${tournament.data.name} — runde ${Math.min(rounds.length + 1, totalRounds)} av ${totalRounds}`}
+      />
       <div className="space-y-4 p-4">
         <RetroPanel>
           <p className="text-sm">
@@ -109,21 +107,19 @@ export function TablePage() {
           <StandingsTable standings={standings} playerNames={playerNames} />
         </RetroPanel>
 
-        {isNoteTaker && activeRoundNumber !== null && activeCards !== null && (
-          <RoundEntryForm
+        {isNoteTaker && activeRoundNumber !== null && (
+          <BowlingScoreForm
             key={activeRoundNumber}
             playerIds={table.data.playerIds}
             playerNames={playerNames}
-            cards={activeCards}
-            initialBids={editingRound?.data.bids}
-            initialTricks={editingRound?.data.tricks}
+            initialScores={editingRound?.data.scores}
             onSave={handleSaveRound}
             onCancel={editingRoundNumber !== null ? () => setEditingRoundNumber(null) : undefined}
           />
         )}
 
-        {isTableComplete && editingRoundNumber === null && (
-          <RetroPanel className="bg-sage/30 text-sm">Bordet er ferdigspilt.</RetroPanel>
+        {isLaneComplete && editingRoundNumber === null && (
+          <RetroPanel className="bg-sage/30 text-sm">Banen er ferdigspilt.</RetroPanel>
         )}
 
         <RetroPanel>

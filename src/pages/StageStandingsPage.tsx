@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '../components/layout/BackLink';
 import { RetroButton, retroButtonClasses } from '../components/layout/RetroButton';
 import { RetroPanel } from '../components/layout/RetroPanel';
@@ -53,8 +53,14 @@ export function StageStandingsPage() {
     return <p className="p-4">Fant ikke tabellen.</p>;
   }
 
+  // Re-seed bowling stages get their own cumulative-standings-and-reshuffle page.
+  if (stage.data.reshuffleMode === 'RESEED_EACH_ROUND') {
+    return <Navigate to={`/t/${tournamentId}/stages/${stageId}/reseed`} replace />;
+  }
+
   const isOrganizer = !!uid && uid === tournament.data.organizerUid;
   const allComplete = tables.length > 0 && tables.every((t) => t.data.status === 'complete');
+  const laneWord = tournament.data.game === 'bowling' ? 'bane' : 'bord';
 
   async function handleFinish() {
     if (!tournamentId || !stageId) return;
@@ -84,7 +90,7 @@ export function StageStandingsPage() {
           />
         ))}
 
-        {tables.length === 0 && <p className="text-sm text-ink/60">Ingen bord i denne runden.</p>}
+        {tables.length === 0 && <p className="text-sm text-ink/60">Ingen {laneWord} i denne runden.</p>}
 
         {isOrganizer && allComplete && stage.data.status !== 'complete' && (
           <div className="space-y-2">

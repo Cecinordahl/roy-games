@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { generateJoinCode } from './joinCode';
+import type { GameType } from '../domain/types';
 import type { TournamentDoc, TournamentStatus, WithId } from './types';
 
 const tournamentsCol = collection(db, 'tournaments');
@@ -29,12 +30,14 @@ async function generateUniqueJoinCode(): Promise<string> {
 
 export async function createTournament(
   name: string,
+  game: GameType,
   organizerUid: string,
   playerNames: Record<string, string>,
 ): Promise<{ id: string; joinCode: string }> {
   const joinCode = await generateUniqueJoinCode();
   const ref = await addDoc(tournamentsCol, {
     name,
+    game,
     joinCode,
     organizerUid,
     createdAt: serverTimestamp(),

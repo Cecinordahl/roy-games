@@ -1,11 +1,23 @@
 # Roy Games
 
-A mobile-first scorekeeper for **Bondebridge** family tournaments. Roy Games is the
-generic name on purpose — Bondebridge is the first game it supports, and the
-tournament/table/player scaffolding (`src/domain/`, outside `src/domain/bondebridge/`)
-is kept game-agnostic so a second game wouldn't require renaming half the codebase.
-No second game is built here, though — see "Why frontend-only" below for the same
-"don't build for hypotheticals" philosophy applied to architecture.
+A mobile-first scorekeeper for family tournaments. Roy Games is the generic name on
+purpose — the tournament/table/player scaffolding (`src/domain/`, outside the
+per-game subfolders) is game-agnostic, which is what let a second game
+(bowling) get added without touching the data model's shape or the Firestore rules.
+
+Two games are supported today:
+
+- **Bondis** (Bondebridge) — bid-and-trick card game scoring, group stage →
+  winners table, configurable tie-break rules. Rules live in
+  `src/domain/bondebridge/`.
+- **Bowling** — much simpler: one raw score per player per round. The organizer
+  picks how lanes reshuffle between rounds: **re-seed every round** (rank
+  everyone globally after each game and regroup lanes by rank — nobody's
+  eliminated, the strongest players just increasingly end up on the same lane)
+  or **group stage then final lane** (same shape as Bondis: fixed lanes for
+  several rounds, then top finishers advance into one final lane).
+  Bowling-specific logic (just a score-range check) lives in
+  `src/domain/bowling/`.
 
 ## Why frontend-only (no backend)
 
@@ -220,6 +232,13 @@ A few implementation choices that aren't spelled out verbatim in the original br
   true by construction, not a special code path.
 - **`cardsPerRound` is resolved and frozen onto each table at creation time**, so
   the round sequence can't drift mid-tournament.
+- **Bowling's "re-seed every round" mode scores cumulatively across the whole
+  night, not per stage.** Every reshuffle creates a new stage (so a player's
+  lane can change each round), so standings there sum a player's score across
+  *every* stage/lane they've sat at (`src/components/bowling/StandingsCollectors.tsx`).
+  This is the one place scoring doesn't reset per stage — Bondebridge, and
+  bowling's "group stage then final lane" mode, both still reset at each new
+  stage.
 
 ## Known limitations (by design, for this scale)
 

@@ -7,15 +7,24 @@ export interface Player {
   canBeNoteTaker: boolean;
 }
 
+export type GameType = 'bondebridge' | 'bowling';
+
 export type RoundSequenceMode = 'DESC' | 'ASC' | 'DESC_ASC' | 'ASC_DESC';
 export type SyncMode = 'SYNCED' | 'INDEPENDENT';
 export type TieBreakRule = 'FEWEST_PENALTY' | 'HIGHEST_SUCCESSFUL_BID' | 'BOTH_ADVANCE';
 
-/** A single completed round's bids/tricks/scores, keyed by player id. */
+/** How a bowling tournament reshuffles lanes between rounds. */
+export type ReshuffleMode = 'RESEED_EACH_ROUND' | 'GROUP_THEN_FINAL';
+
+/**
+ * A single completed round's scores, keyed by player id. `bids`/`tricks` only
+ * apply to Bondebridge rounds (used for its tie-break rules) — bowling rounds
+ * carry a direct score with no bid/tricks breakdown.
+ */
 export interface RoundLike {
-  bids: Record<string, number>;
-  tricks: Record<string, number>;
   scores: Record<string, number>;
+  bids?: Record<string, number>;
+  tricks?: Record<string, number>;
 }
 
 export interface Standing {

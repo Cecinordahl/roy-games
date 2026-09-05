@@ -21,11 +21,13 @@ function TableSummaryCard({
   stageId,
   table,
   playerNames,
+  isBowling,
 }: {
   tournamentId: string;
   stageId: string;
   table: WithId<TableDoc>;
   playerNames: Record<string, string>;
+  isBowling: boolean;
 }) {
   const rounds = useRounds(tournamentId, stageId, table.id);
   const standings = computeStandings(
@@ -33,14 +35,18 @@ function TableSummaryCard({
     table.data.playerIds,
   );
   const leader = standings[0];
+  const totalRounds = table.data.cardsPerRound?.length ?? table.data.roundCount ?? 1;
+  const linkPath = isBowling
+    ? `/t/${tournamentId}/stages/${stageId}/lanes/${table.id}`
+    : `/t/${tournamentId}/stages/${stageId}/tables/${table.id}`;
 
   return (
-    <Link to={`/t/${tournamentId}/stages/${stageId}/tables/${table.id}`}>
+    <Link to={linkPath}>
       <RetroPanel className="hover:bg-sage/20">
         <div className="flex items-center justify-between">
           <p className="font-semibold">{table.data.name}</p>
           <span className="text-xs text-ink/60">
-            {rounds.length}/{table.data.cardsPerRound.length} runder
+            {rounds.length}/{totalRounds} runder
           </span>
         </div>
         <p className="mt-1 text-xs text-ink/60">
@@ -75,6 +81,15 @@ export function TournamentOverviewPage() {
   const playerNames = tournament.data.playerNames;
   const allTablesComplete = tables.length > 0 && tables.every((t) => t.data.status === 'complete');
   const isOrganizer = !!uid && uid === tournament.data.organizerUid;
+  const isBowling = tournament.data.game === 'bowling';
+  const isReseedMode = isBowling && currentStage?.data.reshuffleMode === 'RESEED_EACH_ROUND';
+  const laneWord = isBowling ? 'baner' : 'bord';
+  const setupPath = isBowling ? `/t/${tournamentId}/setup-bowling` : `/t/${tournamentId}/setup`;
+  const standingsPath = currentStage
+    ? isReseedMode
+      ? `/t/${tournamentId}/stages/${currentStage.id}/reseed`
+      : `/t/${tournamentId}/stages/${currentStage.id}/standings`
+    : '';
 
   async function handleDeleteTournament() {
     if (!tournamentId) return;
@@ -98,7 +113,7 @@ export function TournamentOverviewPage() {
         {tournament.data.status === 'setup' && (
           <RetroPanel className="bg-yellow">
             <p className="text-sm">Turneringen er ikke satt i gang ennå.</p>
-            <Link className="underline" to={`/t/${tournamentId}/setup`}>
+            <Link className="underline" to={setupPath}>
               Fortsett oppsett
             </Link>
           </RetroPanel>
@@ -130,18 +145,16 @@ export function TournamentOverviewPage() {
                 stageId={currentStage.id}
                 table={t}
                 playerNames={playerNames}
+                isBowling={isBowling}
               />
             ))}
 
-            <Link
-              to={`/t/${tournamentId}/stages/${currentStage.id}/standings`}
-              className={retroButtonClasses('secondary', 'block w-full')}
-            >
+            <Link to={standingsPath} className={retroButtonClasses('secondary', 'block w-full')}>
               Se full tabell
             </Link>
 
             {allTablesComplete && currentStage.data.status !== 'complete' && (
-              <p className="text-sm text-ink/70">Alle bord er ferdige. Gå til tabellen for å gå videre.</p>
+              <p className="text-sm text-ink/70">Alle {laneWord} er ferdige. Gå til tabellen for å gå videre.</p>
             )}
           </div>
         )}

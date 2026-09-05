@@ -32,14 +32,17 @@ export function RoundList({ rounds, playerIds, playerNames, canEdit, onEdit }: R
           {rounds.map((r) => (
             <tr key={r.id} className="border-b border-ink/20">
               <td className="py-1 pr-2 tabular-nums">
-                {r.data.roundNumber} ({r.data.cards})
+                {r.data.roundNumber}
+                {r.data.cards !== undefined ? ` (${r.data.cards})` : ''}
               </td>
               {playerIds.map((id) => (
                 <td key={id} className="py-1 pr-2">
                   <ScoreValue value={r.data.scores[id] ?? 0} />
-                  <span className="ml-1 text-xs text-ink/50">
-                    ({r.data.bids[id] ?? 0}/{r.data.tricks[id] ?? 0})
-                  </span>
+                  {r.data.bids && r.data.tricks && (
+                    <span className="ml-1 text-xs text-ink/50">
+                      ({r.data.bids[id] ?? 0}/{r.data.tricks[id] ?? 0})
+                    </span>
+                  )}
                 </td>
               ))}
               {canEdit && (

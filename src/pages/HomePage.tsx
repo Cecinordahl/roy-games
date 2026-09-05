@@ -38,7 +38,12 @@ export function HomePage() {
         setJoinError('Fant ingen turnering med den koden.');
         return;
       }
-      rememberTournament({ id: tournament.id, name: tournament.data.name, joinCode: tournament.data.joinCode });
+      rememberTournament({
+        id: tournament.id,
+        name: tournament.data.name,
+        joinCode: tournament.data.joinCode,
+        game: tournament.data.game,
+      });
       navigate(`/t/${tournament.id}`);
     } finally {
       setJoining(false);
@@ -78,9 +83,13 @@ export function HomePage() {
           </RetroPanel>
         )}
 
-        <RetroButton className="w-full" onClick={() => navigate('/tournaments/new')}>
-          Ny turnering
-        </RetroButton>
+        <div>
+          <p className="mb-2 text-sm font-semibold">Ny turnering</p>
+          <div className="grid grid-cols-2 gap-2">
+            <RetroButton onClick={() => navigate('/tournaments/new/bondebridge')}>🃏 Bondis</RetroButton>
+            <RetroButton onClick={() => navigate('/tournaments/new/bowling')}>🎳 Bowling</RetroButton>
+          </div>
+        </div>
 
         <RetroPanel>
           <form onSubmit={handleJoin} className="space-y-2">
@@ -114,7 +123,9 @@ export function HomePage() {
                     className="cursor-pointer hover:bg-sage/20"
                     onClick={() => navigate(`/t/${t.id}`)}
                   >
-                    <p className="font-semibold">{t.name}</p>
+                    <p className="font-semibold">
+                      {t.game === 'bowling' ? '🎳' : '🃏'} {t.name}
+                    </p>
                     <p className="text-xs text-ink/60">Kode: {t.joinCode}</p>
                   </RetroPanel>
                 </li>

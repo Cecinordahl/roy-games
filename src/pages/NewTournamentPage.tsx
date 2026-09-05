@@ -1,15 +1,21 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '../components/layout/BackLink';
 import { RetroButton } from '../components/layout/RetroButton';
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { rememberTournament } from '../data/localHistory';
 import { createTournament } from '../data/tournamentsRepo';
+import type { GameType } from '../domain/types';
 import { useAuth } from '../hooks/useAuth';
 import { usePlayers } from '../hooks/usePlayers';
 
 const MIN_PLAYERS = 3;
+
+const GAME_LABELS: Record<GameType, string> = {
+  bondebridge: '🃏 Bondis',
+  bowling: '🎳 Bowling',
+};
 
 function PlayerPill({
   label,
@@ -38,6 +44,8 @@ function PlayerPill({
 }
 
 export function NewTournamentPage() {
+  const { game: gameParam } = useParams<{ game: string }>();
+  const game: GameType = gameParam === 'bowling' ? 'bowling' : 'bondebridge';
   const navigate = useNavigate();
   const { uid } = useAuth();
   const players = usePlayers();
@@ -79,9 +87,9 @@ export function NewTournamentPage() {
       const playerNames = Object.fromEntries(
         players.filter((p) => selected.has(p.id)).map((p) => [p.id, p.data.name]),
       );
-      const { id, joinCode } = await createTournament(name.trim(), uid, playerNames);
-      rememberTournament({ id, name: name.trim(), joinCode });
-      navigate(`/t/${id}/setup`);
+      const { id, joinCode } = await createTournament(name.trim(), game, uid, playerNames);
+      rememberTournament({ id, name: name.trim(), joinCode, game });
+      navigate(game === 'bowling' ? `/t/${id}/setup-bowling` : `/t/${id}/setup`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Noe gikk galt.');
     } finally {
@@ -92,7 +100,7 @@ export function NewTournamentPage() {
   return (
     <div>
       <BackLink to="/" label="Hjem" />
-      <ScreenHeader title="Ny turnering" />
+      <ScreenHeader title="Ny turnering" subtitle={GAME_LABELS[game]} />
       <form onSubmit={handleSubmit} className="space-y-4 p-4">
         <RetroPanel>
           <label className="block text-sm font-semibold" htmlFor="tournamentName">
