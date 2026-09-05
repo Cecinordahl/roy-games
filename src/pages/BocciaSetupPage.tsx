@@ -130,6 +130,21 @@ export function BocciaSetupPage() {
     teams.every((t) => t.name.trim().length > 0 && t.memberIds.length >= 1);
   const canSubmit = name.trim().length > 0 && (playersValid || teamsValid) && !!noteTakerId && targetScore >= 1 && !!uid && !creating;
 
+  const blockers: string[] = [];
+  if (name.trim().length === 0) blockers.push('Skriv inn et turneringsnavn.');
+  if (mode === 'players' && selectedPlayerIds.length < 2) {
+    blockers.push(`Velg minst 2 spillere (${selectedPlayerIds.length} valgt).`);
+  }
+  if (mode === 'teams') {
+    if (teams.length < 2) blockers.push(`Legg til minst 2 lag (${teams.length} lagt til).`);
+    const emptyTeam = teams.find((t) => t.memberIds.length === 0);
+    if (emptyTeam) blockers.push(`«${emptyTeam.name}» trenger minst én spiller.`);
+    const unnamedTeam = teams.find((t) => t.name.trim().length === 0);
+    if (unnamedTeam) blockers.push('Alle lag trenger et navn.');
+  }
+  if (!noteTakerId) blockers.push('Velg minst én spiller eller ett lag først, så velges notatfører automatisk.');
+  if (!uid) blockers.push('Kobler til … vent litt.');
+
   const eligibleInNotePool = notePool.filter((id) => eligibleIds.has(id));
   const noteTakerOptions = eligibleInNotePool.length > 0 ? eligibleInNotePool : notePool;
 
@@ -323,6 +338,13 @@ export function BocciaSetupPage() {
         )}
 
         {error && <p className="text-sm text-negative">{error}</p>}
+        {!canSubmit && !creating && blockers.length > 0 && (
+          <ul className="list-disc space-y-0.5 pl-5 text-sm text-negative">
+            {blockers.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        )}
         <RetroButton type="submit" className="w-full" disabled={!canSubmit}>
           Start Boccia
         </RetroButton>

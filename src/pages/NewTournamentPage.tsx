@@ -74,6 +74,11 @@ export function NewTournamentPage() {
   }
 
   const canSubmit = name.trim().length > 0 && selected.size >= MIN_PLAYERS && !!uid && !creating;
+
+  const blockers: string[] = [];
+  if (name.trim().length === 0) blockers.push('Skriv inn et turneringsnavn.');
+  if (selected.size < MIN_PLAYERS) blockers.push(`Velg minst ${MIN_PLAYERS} spillere (${selected.size} valgt).`);
+  if (!uid) blockers.push('Kobler til … vent litt.');
   // Uniform pill width capped to the longest name, so the grid lines up neatly
   // instead of every pill hugging its own (very uneven) text length.
   const longestNameLength = players.reduce((max, p) => Math.max(max, p.data.name.length), 0);
@@ -135,6 +140,13 @@ export function NewTournamentPage() {
         </RetroPanel>
 
         {error && <p className="text-sm text-negative">{error}</p>}
+        {!canSubmit && !creating && blockers.length > 0 && (
+          <ul className="list-disc space-y-0.5 pl-5 text-sm text-negative">
+            {blockers.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        )}
         <RetroButton type="submit" className="w-full" disabled={!canSubmit}>
           Opprett turnering
         </RetroButton>
