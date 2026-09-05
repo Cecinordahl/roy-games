@@ -175,6 +175,39 @@ all.
 
    Leave `VITE_USE_FIREBASE_EMULATORS=false` for a real deployment.
 
+## Admin access
+
+Everyone else in the family uses anonymous auth — no sign-up, no password. But
+deleting a tournament's history is restricted to a single admin account, enforced
+in `firestore.rules` (not just hidden in the UI), so it needs a real, permanent
+login. Setup is a one-time, manual process — there's no self-registration flow on
+purpose, so nobody can grant themselves admin access.
+
+1. In the Firebase Console, go to **Build → Authentication → Sign-in method** and
+   enable the **Email/Password** provider (in addition to Anonymous, which should
+   already be on from the setup above).
+2. Go to the **Users** tab and click **Add user**. Enter your own email and a
+   password. Click **Add user**.
+3. Click into the user you just created and copy its **User UID** (a long string
+   like `a1B2c3D4...`).
+4. Open `firestore.rules` in this repo and replace `'REPLACE_WITH_ADMIN_UID'`
+   inside the `isAdmin()` function with that UID (keep the quotes). Deploy it:
+   ```
+   firebase deploy --only firestore:rules
+   ```
+5. Add the same UID as `VITE_ADMIN_UID` in your `.env.local` (for local dev) and
+   in Vercel's environment variables (for the deployed site) — see `.env.example`.
+6. Open the app and go to `/admin` (linked in small text at the bottom of the
+   Personvern page) and log in with the email/password from step 2. That device
+   is now recognized as admin — delete buttons ("Slett turnering" on a
+   tournament's page, and a trash icon on each entry in Historikk) appear
+   wherever they didn't before, regardless of who actually organized that
+   tournament. Everyone else still can't delete anything.
+
+For local development against the emulators, skip the real Firebase Console steps
+and instead add the user directly in the Auth emulator's UI (`localhost:4000` while
+`npm run emulators` is running) — same idea, no real project needed.
+
 ## Environment variables
 
 See `.env.example` for the full list. All are `VITE_`-prefixed (required by Vite to
@@ -239,6 +272,10 @@ A few implementation choices that aren't spelled out verbatim in the original br
   This is the one place scoring doesn't reset per stage — Bondebridge, and
   bowling's "group stage then final lane" mode, both still reset at each new
   stage.
+- **Deleting a tournament is admin-only, not organizer-self-service.** Whoever
+  creates a tournament can still configure and run it, but can no longer delete
+  it themselves — only the one admin account can. This is enforced in
+  `firestore.rules`, not just hidden in the UI. See "Admin access" above.
 
 ## Known limitations (by design, for this scale)
 

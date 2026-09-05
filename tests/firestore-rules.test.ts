@@ -6,7 +6,11 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { addDoc, collection, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+
+// Matches the placeholder in firestore.rules — a real deployment replaces this
+// with the actual admin account's UID, but the rule mechanism is the same either way.
+const ADMIN_UID = 'REPLACE_WITH_ADMIN_UID';
 
 let testEnv: RulesTestEnvironment;
 
@@ -183,6 +187,68 @@ describe('firestore.rules', () => {
       updateDoc(doc(db, 'tournaments/t1/stages/s1/tables/tab1'), {
         noteTakerUid: 'new-uid',
         status: 'complete',
+      }),
+    );
+  });
+
+  it('blocks even the organizer from deleting their own tournament — delete is admin-only', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'tournaments/t1'), {
+        name: 'T',
+        joinCode: 'ABCDEF',
+        organizerUid: 'org-uid',
+        status: 'active',
+        playerIds: [],
+        playerNames: {},
+      });
+    });
+
+    const organizerDb = testEnv.authenticatedContext('org-uid').firestore();
+    await assertFails(deleteDoc(doc(organizerDb, 'tournaments/t1')));
+  });
+
+  it('lets the admin delete a tournament they did not organize', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'tournaments/t1'), {
+        name: 'T',
+        joinCode: 'ABCDEF',
+        organizerUid: 'org-uid',
+        status: 'active',
+        playerIds: [],
+        playerNames: {},
+      });
+    });
+
+    const adminDb = testEnv.authenticatedContext(ADMIN_UID).firestore();
+    await assertSucceeds(deleteDoc(doc(adminDb, 'tournaments/t1')));
+  });
+
+  it('still lets the organizer update their own tournament (e.g. marking it complete)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'tournaments/t1'), {
+        name: 'T',
+        joinCode: 'ABCDEF',
+        organizerUid: 'org-uid',
+        status: 'active',
+        playerIds: [],
+        playerNames: {},
+      });
+    });
+
+    const organizerDb = testEnv.authenticatedContext('org-uid').firestore();
+    await assertSucceeds(updateDoc(doc(organizerDb, 'tournaments/t1'), { status: 'complete' }));
+  });
+
+  it('lets the admin write a round on a table they are not the note taker for', async () => {
+    await seedActiveTable('notetaker-uid');
+    const db = testEnv.authenticatedContext(ADMIN_UID).firestore();
+    await assertSucceeds(
+      setDoc(doc(db, 'tournaments/t1/stages/s1/tables/tab1/rounds/1'), {
+        roundNumber: 1,
+        cards: 10,
+        bids: { p1: 5 },
+        tricks: { p1: 5 },
+        scores: { p1: 15 },
       }),
     );
   });

@@ -25,6 +25,11 @@ export function PersonvernPage() {
           permanent. Ta kontakt med den som administrerer appen for familien.
         </p>
         <p>Appen er laget for privat, familiær bruk — ikke for kommersielt formål eller offentlig bruk.</p>
+        <p>
+          <a href="/admin" className="text-xs text-ink/40 underline">
+            Administrator
+          </a>
+        </p>
       </div>
     </div>
   );

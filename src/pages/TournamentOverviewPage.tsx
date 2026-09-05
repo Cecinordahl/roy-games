@@ -9,8 +9,8 @@ import { forgetTournament } from '../data/localHistory';
 import { deleteTournament } from '../data/tournamentsRepo';
 import type { TableDoc, WithId } from '../data/types';
 import { computeStandings } from '../domain/standings';
-import { useAuth } from '../hooks/useAuth';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { useIsAdmin } from '../hooks/useIsAdmin';
 import { useRounds } from '../hooks/useRounds';
 import { useStages } from '../hooks/useStages';
 import { useTables } from '../hooks/useTables';
@@ -65,7 +65,7 @@ function TableSummaryCard({
 export function TournamentOverviewPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const navigate = useNavigate();
-  const { uid } = useAuth();
+  const isAdmin = useIsAdmin();
   const tournament = useTournament(tournamentId);
   const stages = useStages(tournamentId);
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
@@ -80,7 +80,6 @@ export function TournamentOverviewPage() {
 
   const playerNames = tournament.data.playerNames;
   const allTablesComplete = tables.length > 0 && tables.every((t) => t.data.status === 'complete');
-  const isOrganizer = !!uid && uid === tournament.data.organizerUid;
   const isBowling = tournament.data.game === 'bowling';
   const isReseedMode = isBowling && currentStage?.data.reshuffleMode === 'RESEED_EACH_ROUND';
   const laneWord = isBowling ? 'baner' : 'bord';
@@ -165,7 +164,7 @@ export function TournamentOverviewPage() {
           </Link>
         )}
 
-        {isOrganizer && (
+        {isAdmin && (
           <RetroButton
             type="button"
             variant="danger"

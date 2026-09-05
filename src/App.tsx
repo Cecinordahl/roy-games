@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { BottomNav } from './components/layout/BottomNav';
+import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdvancementPage } from './pages/AdvancementPage';
 import { BowlingLanePage } from './pages/BowlingLanePage';
 import { BowlingReseedPage } from './pages/BowlingReseedPage';
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/players" element={<PlayerBankPage />} />
             <Route path="/history" element={<HistoryListPage />} />
             <Route path="/personvern" element={<PersonvernPage />} />
+            <Route path="/admin" element={<AdminLoginPage />} />
             <Route path="/tournaments/new/:game" element={<NewTournamentPage />} />
             <Route path="/t/:tournamentId/setup" element={<StageSetupPage />} />
             <Route path="/t/:tournamentId/setup-bowling" element={<BowlingSetupPage />} />

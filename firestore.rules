@@ -8,11 +8,23 @@ rules_version = '2';
 //     reconfigure the tournament or its stages
 //   - a table's noteTakerUid may write that table's rounds; anyone may take over
 //     note-taking by changing noteTakerUid alone ("Ta over notatføring")
+//   - deleting a tournament/stage/table is admin-only (see isAdmin() below) — an
+//     organizer can run and reconfigure their own tournament, but only the admin
+//     account can permanently delete history. Real email/password auth, not
+//     anonymous — see README "Admin access".
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    // Replace with your admin account's UID (Firebase Console → Authentication →
+    // Users, after creating the account — see README "Admin access"), then
+    // redeploy with `firebase deploy --only firestore:rules`. Add more UIDs to
+    // the list for additional admins.
+    function isAdmin() {
+      return isSignedIn() && request.auth.uid in ['REPLACE_WITH_ADMIN_UID'];
     }
 
     function isOrganizer(tournamentId) {
@@ -29,26 +41,30 @@ service cloud.firestore {
     match /tournaments/{tournamentId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.organizerUid == request.auth.uid;
-      allow update, delete: if isOrganizer(tournamentId);
+      allow update: if isOrganizer(tournamentId) || isAdmin();
+      allow delete: if isAdmin();
 
       match /stages/{stageId} {
         allow read: if isSignedIn();
-        allow write: if isOrganizer(tournamentId);
+        allow create, update: if isOrganizer(tournamentId) || isAdmin();
+        allow delete: if isAdmin();
 
         match /tables/{tableId} {
           allow read: if isSignedIn();
-          allow create: if isOrganizer(tournamentId);
-          allow delete: if isOrganizer(tournamentId);
-          // Organizer can always reconfigure; the current note taker can update their
-          // own table; anyone signed in may take over by changing noteTakerUid alone.
+          allow create: if isOrganizer(tournamentId) || isAdmin();
+          allow delete: if isAdmin();
+          // Organizer (or admin) can always reconfigure; the current note taker can
+          // update their own table; anyone signed in may take over by changing
+          // noteTakerUid alone.
           allow update: if isOrganizer(tournamentId)
+            || isAdmin()
             || resource.data.noteTakerUid == request.auth.uid
             || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['noteTakerUid']);
 
           match /rounds/{roundId} {
             allow read: if isSignedIn();
-            allow write: if isSignedIn() &&
-              get(/databases/$(database)/documents/tournaments/$(tournamentId)/stages/$(stageId)/tables/$(tableId)).data.noteTakerUid == request.auth.uid;
+            allow write: if isAdmin() || (isSignedIn() &&
+              get(/databases/$(database)/documents/tournaments/$(tournamentId)/stages/$(stageId)/tables/$(tableId)).data.noteTakerUid == request.auth.uid);
           }
         }
       }
