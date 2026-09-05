@@ -1,15 +1,18 @@
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '../components/layout/BackLink';
 import { RetroButton, retroButtonClasses } from '../components/layout/RetroButton';
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { StandingsTable } from '../components/standings/StandingsTable';
+import { reshuffleIntoNextStage } from '../data/bowlingReshuffle';
 import { updateStage } from '../data/stagesRepo';
 import type { TableDoc, WithId } from '../data/types';
 import { updateTournamentStatus } from '../data/tournamentsRepo';
 import { computeStandings } from '../domain/standings';
 import { useAuth } from '../hooks/useAuth';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { usePlayers } from '../hooks/usePlayers';
 import { useRounds } from '../hooks/useRounds';
 import { useStage } from '../hooks/useStages';
 import { useTables } from '../hooks/useTables';
@@ -20,17 +23,27 @@ function TableStandingsBlock({
   stageId,
   table,
   playerNames,
+  onResult,
 }: {
   tournamentId: string;
   stageId: string;
   table: WithId<TableDoc>;
   playerNames: Record<string, string>;
+  onResult: (tableId: string, totalsByPlayer: Record<string, number>) => void;
 }) {
   const rounds = useRounds(tournamentId, stageId, table.id);
   const standings = computeStandings(
     rounds.map((r) => r.data),
     table.data.playerIds,
   );
+  const totalsByPlayer = Object.fromEntries(standings.map((s) => [s.playerId, s.total]));
+  const key = JSON.stringify(totalsByPlayer);
+
+  useEffect(() => {
+    onResult(table.id, totalsByPlayer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table.id, key]);
+
   return (
     <RetroPanel>
       <p className="mb-2 text-sm font-semibold">{table.data.name}</p>
@@ -46,7 +59,14 @@ export function StageStandingsPage() {
   const tournament = useTournament(tournamentId);
   const stage = useStage(tournamentId, stageId);
   const tables = useTables(tournamentId, stageId);
+  const players = usePlayers();
   const { confirm, dialog } = useConfirmDialog();
+  const [laneTotals, setLaneTotals] = useState<Record<string, Record<string, number>>>({});
+  const [reshuffling, setReshuffling] = useState(false);
+
+  function handleResult(tableId: string, totalsByPlayer: Record<string, number>) {
+    setLaneTotals((prev) => ({ ...prev, [tableId]: totalsByPlayer }));
+  }
 
   if (tournament === undefined || stage === undefined) return <p className="p-4">Laster …</p>;
   if (tournament === null || stage === null || !tournamentId || !stageId) {
@@ -59,8 +79,17 @@ export function StageStandingsPage() {
   }
 
   const isOrganizer = !!uid && uid === tournament.data.organizerUid;
+  const isBowling = tournament.data.game === 'bowling';
   const allComplete = tables.length > 0 && tables.every((t) => t.data.status === 'complete');
-  const laneWord = tournament.data.game === 'bowling' ? 'bane' : 'bord';
+  const laneWord = isBowling ? 'bane' : 'bord';
+  const eligibleIds = new Set(players.filter((p) => p.data.canBeNoteTaker).map((p) => p.id));
+
+  const currentStagePlayerIds = tables.flatMap((t) => t.data.playerIds);
+  const totalsByPlayer: Record<string, number> = {};
+  tables.forEach((t) => Object.assign(totalsByPlayer, laneTotals[t.id] ?? {}));
+  const rankedPlayerIds = [...currentStagePlayerIds].sort(
+    (a, b) => (totalsByPlayer[b] ?? 0) - (totalsByPlayer[a] ?? 0),
+  );
 
   async function handleFinish() {
     if (!tournamentId || !stageId) return;
@@ -75,6 +104,27 @@ export function StageStandingsPage() {
     navigate(`/t/${tournamentId}/podium`);
   }
 
+  async function handleReshuffle() {
+    if (!tournamentId || !stageId || !uid || !stage) return;
+    setReshuffling(true);
+    try {
+      await reshuffleIntoNextStage({
+        tournamentId,
+        previousStageId: stageId,
+        previousStageIndex: stage.data.index,
+        reshuffleMode: 'GROUP_THEN_FINAL',
+        roundCount: stage.data.roundCount ?? 1,
+        sortedPlayerIds: rankedPlayerIds,
+        laneCount: tables.length,
+        organizerUid: uid,
+        eligiblePlayerIds: eligibleIds,
+      });
+      navigate(`/t/${tournamentId}`);
+    } finally {
+      setReshuffling(false);
+    }
+  }
+
   return (
     <div>
       <BackLink to={`/t/${tournamentId}`} />
@@ -87,6 +137,7 @@ export function StageStandingsPage() {
             stageId={stageId}
             table={t}
             playerNames={tournament.data.playerNames}
+            onResult={handleResult}
           />
         ))}
 
@@ -94,7 +145,15 @@ export function StageStandingsPage() {
 
         {isOrganizer && allComplete && stage.data.status !== 'complete' && (
           <div className="space-y-2">
-            <Link to={`/t/${tournamentId}/stages/${stageId}/advance`} className={retroButtonClasses('primary', 'block w-full')}>
+            {isBowling && (
+              <RetroButton type="button" className="w-full" onClick={handleReshuffle} disabled={reshuffling}>
+                Legg til runde med nye lag (beste sammen, dårligste sammen)
+              </RetroButton>
+            )}
+            <Link
+              to={`/t/${tournamentId}/stages/${stageId}/advance`}
+              className={retroButtonClasses(isBowling ? 'secondary' : 'primary', 'block w-full')}
+            >
               Foreslå neste runde
             </Link>
             <RetroButton type="button" variant="secondary" className="w-full" onClick={handleFinish}>

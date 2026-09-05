@@ -13,7 +13,7 @@ export interface LaneResult {
  * component rather than a hook called in a loop so the number of hooks used stays
  * fixed per instance regardless of how many lanes/stages exist.
  */
-function LaneRoundsCollector({
+export function LaneRoundsCollector({
   tournamentId,
   stageId,
   table,

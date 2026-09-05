@@ -6,10 +6,9 @@ import { RetroPanel } from '../components/layout/RetroPanel';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { StandingsTable } from '../components/standings/StandingsTable';
 import { StageLanesCollector, type LaneResult } from '../components/bowling/StandingsCollectors';
-import { createStage, updateStage } from '../data/stagesRepo';
-import { createTable } from '../data/tablesRepo';
+import { reshuffleIntoNextStage } from '../data/bowlingReshuffle';
+import { updateStage } from '../data/stagesRepo';
 import { updateTournamentStatus } from '../data/tournamentsRepo';
-import { distributeGroups, pickNoteTaker, splitIntoGroups } from '../domain/groupDistribution';
 import { useAuth } from '../hooks/useAuth';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { usePlayers } from '../hooks/usePlayers';
@@ -63,31 +62,17 @@ export function BowlingReseedPage() {
     if (!tournamentId || !stageId || !uid || !stage) return;
     setSaving(true);
     try {
-      const sortedIds = standings.map((s) => s.playerId);
-      const laneCount = currentStageTables.length;
-      const sizes = distributeGroups(sortedIds.length, laneCount);
-      const newLanes = splitIntoGroups(sortedIds, sizes);
-
-      const newStageId = await createStage(tournamentId, {
-        index: stage.data.index + 1,
-        name: `Runde ${stage.data.index + 2}`,
-        status: 'active',
+      await reshuffleIntoNextStage({
+        tournamentId,
+        previousStageId: stageId,
+        previousStageIndex: stage.data.index,
         reshuffleMode: 'RESEED_EACH_ROUND',
         roundCount: 1,
+        sortedPlayerIds: standings.map((s) => s.playerId),
+        laneCount: currentStageTables.length,
+        organizerUid: uid,
+        eligiblePlayerIds: eligibleIds,
       });
-
-      for (let i = 0; i < newLanes.length; i++) {
-        await createTable(tournamentId, newStageId, {
-          name: `Bane ${i + 1}`,
-          playerIds: newLanes[i],
-          noteTakerPlayerId: pickNoteTaker(newLanes[i], eligibleIds),
-          noteTakerUid: uid,
-          roundCount: 1,
-          status: 'active',
-        });
-      }
-
-      await updateStage(tournamentId, stageId, { status: 'complete' });
       navigate(`/t/${tournamentId}`);
     } finally {
       setSaving(false);

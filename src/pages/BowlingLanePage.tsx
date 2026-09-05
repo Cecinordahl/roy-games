@@ -54,6 +54,11 @@ export function BowlingLanePage() {
     await takeOverNoteTaking(tournamentId, stageId, tableId, uid);
   }
 
+  async function handleAddRound() {
+    if (!tournamentId || !stageId || !tableId) return;
+    await updateTable(tournamentId, stageId, tableId, { roundCount: totalRounds + 1, status: 'active' });
+  }
+
   async function handleSaveRound(scores: Record<string, number>) {
     if (!tournamentId || !stageId || !tableId || !table || activeRoundNumber === null) return;
 
@@ -119,7 +124,14 @@ export function BowlingLanePage() {
         )}
 
         {isLaneComplete && editingRoundNumber === null && (
-          <RetroPanel className="bg-sage/30 text-sm">Banen er ferdigspilt.</RetroPanel>
+          <RetroPanel className="bg-sage/30 text-sm">
+            <p>Banen er ferdigspilt.</p>
+            {isNoteTaker && (
+              <RetroButton type="button" variant="secondary" className="mt-2 w-full" onClick={handleAddRound}>
+                Legg til en runde til
+              </RetroButton>
+            )}
+          </RetroPanel>
         )}
 
         <RetroPanel>
