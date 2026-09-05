@@ -16,11 +16,14 @@ import { useAuth } from '../hooks/useAuth';
 import { usePlayers } from '../hooks/usePlayers';
 
 const MAX_PARTICIPANTS = 4;
-const DEFAULT_ROUND_COUNT = 5;
+const MAX_TEAM_SIZE = 2;
+const DEFAULT_TARGET_SCORE = 12;
 
 interface TeamDraft {
   id: string;
   name: string;
+  /** False until the organizer manually edits the name — until then it tracks the members automatically. */
+  nameEdited: boolean;
   memberIds: string[];
 }
 
@@ -49,11 +52,18 @@ export function BocciaSetupPage() {
   const { uid } = useAuth();
   const players = usePlayers();
 
+  function deriveTeamName(memberIds: string[], fallbackIndex: number): string {
+    const memberNames = memberIds
+      .map((id) => players.find((p) => p.id === id)?.data.name)
+      .filter((n): n is string => !!n);
+    return memberNames.length > 0 ? memberNames.join(' og ') : `Lag ${fallbackIndex + 1}`;
+  }
+
   const [name, setName] = useState('');
   const [mode, setMode] = useState<BocciaParticipantMode>('players');
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [teams, setTeams] = useState<TeamDraft[]>([]);
-  const [roundCount, setRoundCount] = useState(DEFAULT_ROUND_COUNT);
+  const [targetScore, setTargetScore] = useState(DEFAULT_TARGET_SCORE);
   const [noteTakerId, setNoteTakerId] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +90,11 @@ export function BocciaSetupPage() {
   }
 
   function addTeam() {
-    setTeams((prev) => (prev.length >= MAX_PARTICIPANTS ? prev : [...prev, { id: makeTeamId(), name: `Lag ${prev.length + 1}`, memberIds: [] }]));
+    setTeams((prev) =>
+      prev.length >= MAX_PARTICIPANTS
+        ? prev
+        : [...prev, { id: makeTeamId(), name: deriveTeamName([], prev.length), nameEdited: false, memberIds: [] }],
+    );
   }
 
   function removeTeam(id: string) {
@@ -88,18 +102,22 @@ export function BocciaSetupPage() {
   }
 
   function renameTeam(id: string, teamName: string) {
-    setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, name: teamName } : t)));
+    setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, name: teamName, nameEdited: true } : t)));
   }
 
   function toggleTeamMember(teamId: string, playerId: string) {
     setTeams((prev) =>
-      prev.map((t) => {
+      prev.map((t, index) => {
         if (t.id === teamId) {
           const has = t.memberIds.includes(playerId);
-          return { ...t, memberIds: has ? t.memberIds.filter((id) => id !== playerId) : [...t.memberIds, playerId] };
+          if (!has && t.memberIds.length >= MAX_TEAM_SIZE) return t;
+          const memberIds = has ? t.memberIds.filter((id) => id !== playerId) : [...t.memberIds, playerId];
+          return { ...t, memberIds, name: t.nameEdited ? t.name : deriveTeamName(memberIds, index) };
         }
         // A player can only be on one team — assigning them here unassigns them elsewhere.
-        return { ...t, memberIds: t.memberIds.filter((id) => id !== playerId) };
+        if (!t.memberIds.includes(playerId)) return t;
+        const memberIds = t.memberIds.filter((id) => id !== playerId);
+        return { ...t, memberIds, name: t.nameEdited ? t.name : deriveTeamName(memberIds, index) };
       }),
     );
   }
@@ -110,7 +128,7 @@ export function BocciaSetupPage() {
     teams.length >= 2 &&
     teams.length <= MAX_PARTICIPANTS &&
     teams.every((t) => t.name.trim().length > 0 && t.memberIds.length >= 1);
-  const canSubmit = name.trim().length > 0 && (playersValid || teamsValid) && !!noteTakerId && roundCount >= 1 && !!uid && !creating;
+  const canSubmit = name.trim().length > 0 && (playersValid || teamsValid) && !!noteTakerId && targetScore >= 1 && !!uid && !creating;
 
   const eligibleInNotePool = notePool.filter((id) => eligibleIds.has(id));
   const noteTakerOptions = eligibleInNotePool.length > 0 ? eligibleInNotePool : notePool;
@@ -148,14 +166,13 @@ export function BocciaSetupPage() {
         index: 0,
         name: 'Boccia',
         status: 'active',
-        roundCount,
       });
       await createTable(id, stageId, {
         name: 'Bane',
         playerIds: participantIds,
         noteTakerPlayerId: noteTakerId,
         noteTakerUid: uid,
-        roundCount,
+        targetScore,
         status: 'active',
       });
       await updateTournamentStatus(id, 'active');
@@ -219,12 +236,10 @@ export function BocciaSetupPage() {
           </RetroPanel>
         ) : (
           <RetroPanel>
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-semibold">Lag ({teams.length}/{MAX_PARTICIPANTS})</p>
-              <RetroButton type="button" variant="secondary" onClick={addTeam} disabled={teams.length >= MAX_PARTICIPANTS}>
-                + Legg til lag
-              </RetroButton>
-            </div>
+            <p className="text-sm font-semibold">
+              Lag ({teams.length}/{MAX_PARTICIPANTS})
+            </p>
+            <p className="mb-2 text-xs text-ink/60">Maks {MAX_TEAM_SIZE} spillere per lag.</p>
             <div className="space-y-3">
               {teams.map((team) => (
                 <div key={team.id} className="border-2 border-ink/30 p-3">
@@ -247,12 +262,13 @@ export function BocciaSetupPage() {
                     {players.map((p) => {
                       const onThisTeam = team.memberIds.includes(p.id);
                       const onOtherTeam = teams.some((t) => t.id !== team.id && t.memberIds.includes(p.id));
+                      const teamFull = team.memberIds.length >= MAX_TEAM_SIZE;
                       return (
                         <PlayerPill
                           key={p.id}
                           label={p.data.name}
                           active={onThisTeam}
-                          disabled={onOtherTeam}
+                          disabled={onOtherTeam || (!onThisTeam && teamFull)}
                           onClick={() => toggleTeamMember(team.id, p.id)}
                         />
                       );
@@ -262,21 +278,33 @@ export function BocciaSetupPage() {
               ))}
               {teams.length === 0 && <p className="text-sm text-ink/60">Legg til minst to lag.</p>}
             </div>
+            <RetroButton
+              type="button"
+              variant="secondary"
+              className="mt-3 w-full"
+              onClick={addTeam}
+              disabled={teams.length >= MAX_PARTICIPANTS}
+            >
+              + Legg til lag
+            </RetroButton>
           </RetroPanel>
         )}
 
         <RetroPanel>
-          <label className="block text-sm font-semibold" htmlFor="roundCount">
-            Antall runder
+          <label className="block text-sm font-semibold" htmlFor="targetScore">
+            Først til hvor mange poeng?
           </label>
           <input
-            id="roundCount"
+            id="targetScore"
             type="number"
             min={1}
             className="mt-1 w-24 border-2 border-ink bg-white px-2 py-1"
-            value={roundCount}
-            onChange={(e) => setRoundCount(Math.max(1, Number(e.target.value) || 1))}
+            value={targetScore}
+            onChange={(e) => setTargetScore(Math.max(1, Number(e.target.value) || 1))}
           />
+          <p className="mt-1 text-xs text-ink/60">
+            Spillet slutter så snart noen når dette antallet poeng.
+          </p>
         </RetroPanel>
 
         {notePool.length > 0 && (

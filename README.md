@@ -18,17 +18,22 @@ Three games are supported today:
   several rounds, then top finishers advance into one final lane).
   Bowling-specific logic (just a score-range check) lives in
   `src/domain/bowling/`.
-- **Boccia** — simplest of the three: up to 4 players *or* up to 4 teams (a team
-  is a custom name plus members picked from the shared name bank), playing a
-  fixed number of rounds set up front, all against each other directly — no
-  groups, no lanes, no advancement. Each round the note taker records who was
-  closest to the jack (+1) and who (if anyone — zero, one, or several) hit it
-  directly (+1 each, stacking with the closest-ball point). A "team" is modelled
-  as a synthetic participant id folded into the same `playerNames` map every
-  other game uses, so standings/podium code needed no changes at all; team
-  membership itself is recorded separately (`teamRosters` on the tournament) so
-  history shows who was actually on each team. Scoring logic lives in
-  `src/domain/boccia/`.
+- **Boccia** — simplest of the three: up to 4 players *or* up to 4 teams of at
+  most 2 (a team's name defaults to its members' names, e.g. "Martin og
+  Cecilie", editable if the organizer wants something else), playing
+  first-to-N-points (organizer sets N up front) all against each other
+  directly — no groups, no lanes, no advancement, and no fixed round count: the
+  table auto-completes the moment someone's total reaches the target. Each
+  round the note taker records who was closest to the jack (+1, or +2 if that
+  participant had *both* their balls closer than everyone else's) and, per
+  participant, how many of their balls hit the jack directly (0–2 — a two-player
+  team can each land one, a solo player can land both of their own — +1 each,
+  stacking with the closest-ball point). A "team" is modelled as a synthetic
+  participant id folded into the same `playerNames` map every other game uses,
+  so standings/podium code needed no changes at all; team membership itself is
+  recorded separately (`teamRosters` on the tournament) so history shows who
+  was actually on each
+  team. Scoring logic lives in `src/domain/boccia/`.
 
 ## Why frontend-only (no backend)
 

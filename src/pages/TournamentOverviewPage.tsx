@@ -42,7 +42,7 @@ function TableSummaryCard({
     table.data.playerIds,
   );
   const leader = standings[0];
-  const totalRounds = table.data.cardsPerRound?.length ?? table.data.roundCount ?? 1;
+  const totalRounds = table.data.cardsPerRound?.length ?? table.data.roundCount;
   const linkPath = `/t/${tournamentId}/stages/${stageId}/${TABLE_LINK_SEGMENT[game]}/${table.id}`;
 
   return (
@@ -51,7 +51,9 @@ function TableSummaryCard({
         <div className="flex items-center justify-between">
           <p className="font-semibold">{table.data.name}</p>
           <span className="text-xs text-ink/60">
-            {rounds.length}/{totalRounds} runder
+            {table.data.targetScore !== undefined
+              ? `til ${table.data.targetScore} p`
+              : `${rounds.length}/${totalRounds ?? 1} runder`}
           </span>
         </div>
         <p className="mt-1 text-xs text-ink/60">

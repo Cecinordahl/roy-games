@@ -41,8 +41,7 @@ export interface StageDoc {
 
   // --- Bowling-specific stage config ---
   reshuffleMode?: ReshuffleMode;
-  /** How many rounds this stage's lanes play before the organizer reshuffles/advances.
-   *  Also used, more simply, as Boccia's fixed total round count (single stage, no reshuffle). */
+  /** How many rounds this stage's lanes play before the organizer reshuffles/advances. */
   roundCount?: number;
 }
 
@@ -57,8 +56,10 @@ export interface TableDoc {
   status: TableStatus;
   /** Bondebridge: full resolved card-count sequence, frozen at table creation. */
   cardsPerRound?: number[];
-  /** Bowling/Boccia: how many rounds this table plays, frozen at creation. */
+  /** Bowling: how many rounds this lane plays, frozen at creation. */
   roundCount?: number;
+  /** Boccia only: first participant/team to reach this many points wins and ends the game. */
+  targetScore?: number;
 }
 
 export interface RoundDoc {
@@ -71,7 +72,10 @@ export interface RoundDoc {
   tricks?: Record<string, number>;
   /** Boccia-only: the raw inputs `scores` was derived from, kept for editing/history. */
   closestId?: string;
-  ballHitIds?: string[];
+  /** True if the closest participant had both their balls closer than anyone else's (2 points instead of 1). */
+  closestDoubled?: boolean;
+  /** Per participant, how many of their balls hit the jack directly this round (0, 1, or 2). */
+  ballHitCounts?: Record<string, number>;
 }
 
 export interface WithId<T> {

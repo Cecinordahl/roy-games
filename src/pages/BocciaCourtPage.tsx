@@ -42,7 +42,7 @@ export function BocciaCourtPage() {
 
   const participantNames = tournament.data.playerNames;
   const isNoteTaker = !!uid && uid === table.data.noteTakerUid;
-  const totalRounds = table.data.roundCount ?? 1;
+  const targetScore = table.data.targetScore;
   const nextRoundNumber = rounds.length + 1;
   const isComplete = table.data.status === 'complete';
 
@@ -55,9 +55,9 @@ export function BocciaCourtPage() {
     await takeOverNoteTaking(tournamentId, stageId, tableId, uid);
   }
 
-  async function handleSaveRound(closestId: string, ballHitIds: string[]) {
+  async function handleSaveRound(closestId: string, closestDoubled: boolean, ballHitCounts: Record<string, number>) {
     if (!tournamentId || !stageId || !tableId || !table || activeRoundNumber === null) return;
-    const scores = computeRoundScores(table.data.playerIds, closestId, ballHitIds);
+    const scores = computeRoundScores(table.data.playerIds, closestId, closestDoubled, ballHitCounts);
 
     if (isComplete && editingRoundNumber !== null) {
       const hypotheticalRounds = rounds.map((r) =>
@@ -77,10 +77,18 @@ export function BocciaCourtPage() {
       }
     }
 
-    await saveRound(tournamentId, stageId, tableId, activeRoundNumber, { closestId, ballHitIds, scores });
+    await saveRound(tournamentId, stageId, tableId, activeRoundNumber, { closestId, closestDoubled, ballHitCounts, scores });
 
-    if (!isComplete && activeRoundNumber === totalRounds) {
-      await updateTable(tournamentId, stageId, tableId, { status: 'complete' });
+    if (!isComplete) {
+      const updatedRounds = [
+        ...rounds.filter((r) => r.data.roundNumber !== activeRoundNumber).map((r) => r.data),
+        { scores },
+      ];
+      const updatedStandings = computeStandings(updatedRounds, table.data.playerIds);
+      const leaderTotal = updatedStandings[0]?.total ?? 0;
+      if (targetScore !== undefined && leaderTotal >= targetScore) {
+        await updateTable(tournamentId, stageId, tableId, { status: 'complete' });
+      }
     }
     setEditingRoundNumber(null);
   }
@@ -90,7 +98,11 @@ export function BocciaCourtPage() {
       <BackLink to={`/t/${tournamentId}`} label="Til turneringen" />
       <ScreenHeader
         title={table.data.name}
-        subtitle={`${tournament.data.name} — runde ${Math.min(rounds.length + 1, totalRounds)} av ${totalRounds}`}
+        subtitle={
+          targetScore !== undefined
+            ? `${tournament.data.name} — spilles til ${targetScore} poeng`
+            : tournament.data.name
+        }
       />
       <div className="space-y-4 p-4">
         <RetroPanel>
@@ -116,14 +128,15 @@ export function BocciaCourtPage() {
             participantIds={table.data.playerIds}
             participantNames={participantNames}
             initialClosestId={editingRound?.data.closestId}
-            initialBallHitIds={editingRound?.data.ballHitIds}
+            initialClosestDoubled={editingRound?.data.closestDoubled}
+            initialBallHitCounts={editingRound?.data.ballHitCounts}
             onSave={handleSaveRound}
             onCancel={editingRoundNumber !== null ? () => setEditingRoundNumber(null) : undefined}
           />
         )}
 
         {isComplete && editingRoundNumber === null && (
-          <RetroPanel className="bg-sage/30 text-sm">Alle runder er spilt.</RetroPanel>
+          <RetroPanel className="bg-sage/30 text-sm">Spillet er ferdig.</RetroPanel>
         )}
 
         <RetroPanel>
