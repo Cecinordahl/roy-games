@@ -22,6 +22,10 @@ export interface TournamentDoc {
   playerNames: Record<string, string>;
   /** Boccia team mode only: which real player ids sit on each team id, frozen at creation for history. */
   teamRosters?: Record<string, string[]>;
+  /** Optional organizer-set date the tournament actually happened on ("2026-07-15"),
+   *  distinct from `createdAt` (when the record was entered into the app). Editable
+   *  after the fact — see `updateTournamentInfo`. */
+  eventDate?: string;
 }
 
 export type StageStatus = 'active' | 'complete';

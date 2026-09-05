@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '../components/layout/BackLink';
+import { PencilIcon } from '../components/layout/PencilIcon';
 import { RetroButton, retroButtonClasses } from '../components/layout/RetroButton';
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { TrashIcon } from '../components/layout/TrashIcon';
-import { forgetTournament } from '../data/localHistory';
-import { deleteTournament } from '../data/tournamentsRepo';
+import { forgetTournament, rememberTournament } from '../data/localHistory';
+import { deleteTournament, updateTournamentInfo } from '../data/tournamentsRepo';
 import type { TableDoc, WithId } from '../data/types';
+import { formatNorwegianDate } from '../domain/dates';
 import { computeStandings } from '../domain/standings';
 import type { GameType } from '../domain/types';
+import { useAuth } from '../hooks/useAuth';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 import { useRounds } from '../hooks/useRounds';
@@ -74,10 +77,15 @@ function TableSummaryCard({
 export function TournamentOverviewPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const navigate = useNavigate();
+  const { uid } = useAuth();
   const isAdmin = useIsAdmin();
   const tournament = useTournament(tournamentId);
   const stages = useStages(tournamentId);
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [savingInfo, setSavingInfo] = useState(false);
   const { confirm, dialog } = useConfirmDialog();
 
   const currentStage = stages.find((s) => s.id === activeStageId) ?? stages[stages.length - 1];
@@ -88,6 +96,8 @@ export function TournamentOverviewPage() {
   if (!tournamentId) return null;
 
   const playerNames = tournament.data.playerNames;
+  const isOrganizer = !!uid && uid === tournament.data.organizerUid;
+  const canEditInfo = isOrganizer || isAdmin;
   const allTablesComplete = tables.length > 0 && tables.every((t) => t.data.status === 'complete');
   const isBowling = tournament.data.game === 'bowling';
   const isBoccia = tournament.data.game === 'boccia';
@@ -118,11 +128,87 @@ export function TournamentOverviewPage() {
     navigate('/');
   }
 
+  function startEditingInfo() {
+    setEditName(tournament!.data.name);
+    setEditDate(tournament!.data.eventDate ?? '');
+    setEditingInfo(true);
+  }
+
+  async function handleSaveInfo() {
+    if (!tournamentId || editName.trim().length === 0) return;
+    setSavingInfo(true);
+    try {
+      await updateTournamentInfo(tournamentId, {
+        name: editName.trim(),
+        eventDate: editDate || null,
+      });
+      rememberTournament({
+        id: tournamentId,
+        name: editName.trim(),
+        joinCode: tournament!.data.joinCode,
+        game: tournament!.data.game,
+        eventDate: editDate || undefined,
+      });
+      setEditingInfo(false);
+    } finally {
+      setSavingInfo(false);
+    }
+  }
+
   return (
     <div>
       <BackLink to="/" label="Hjem" />
-      <ScreenHeader title={tournament.data.name} subtitle={`Kode: ${tournament.data.joinCode}`} />
+      <ScreenHeader
+        title={tournament.data.name}
+        subtitle={`Kode: ${tournament.data.joinCode}${
+          tournament.data.eventDate ? ' · ' + formatNorwegianDate(tournament.data.eventDate) : ''
+        }`}
+      />
       <div className="space-y-4 p-4">
+        {canEditInfo && (
+          <RetroPanel>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">Turneringsinfo</p>
+              {!editingInfo && (
+                <button type="button" className="p-1 text-ink/60" aria-label="Endre turnering" onClick={startEditingInfo}>
+                  <PencilIcon className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+            {editingInfo && (
+              <div className="mt-2 space-y-2">
+                <label className="block text-xs font-semibold" htmlFor="editName">
+                  Navn
+                </label>
+                <input
+                  id="editName"
+                  className="w-full border-2 border-ink bg-white px-2 py-1 text-sm"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                />
+                <label className="block text-xs font-semibold" htmlFor="editDate">
+                  Dato
+                </label>
+                <input
+                  id="editDate"
+                  type="date"
+                  className="border-2 border-ink bg-white px-2 py-1 text-sm"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                />
+                <div className="flex justify-end gap-2 pt-1">
+                  <RetroButton type="button" variant="secondary" onClick={() => setEditingInfo(false)}>
+                    Avbryt
+                  </RetroButton>
+                  <RetroButton type="button" onClick={handleSaveInfo} disabled={savingInfo || editName.trim().length === 0}>
+                    Lagre
+                  </RetroButton>
+                </div>
+              </div>
+            )}
+          </RetroPanel>
+        )}
+
         {tournament.data.status === 'setup' && (
           <RetroPanel className="bg-yellow">
             <p className="text-sm">Turneringen er ikke satt i gang ennå.</p>

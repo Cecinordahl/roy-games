@@ -44,6 +44,7 @@ export function HomePage() {
         name: tournament.data.name,
         joinCode: tournament.data.joinCode,
         game: tournament.data.game,
+        eventDate: tournament.data.eventDate,
       });
       navigate(`/t/${tournament.id}`);
     } finally {

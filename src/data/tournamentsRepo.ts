@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   limit,
@@ -34,7 +35,7 @@ export async function createTournament(
   game: GameType,
   organizerUid: string,
   playerNames: Record<string, string>,
-  extra?: Partial<Pick<TournamentDoc, 'teamRosters'>>,
+  extra?: Partial<Pick<TournamentDoc, 'teamRosters' | 'eventDate'>>,
 ): Promise<{ id: string; joinCode: string }> {
   const joinCode = await generateUniqueJoinCode();
   const ref = await addDoc(tournamentsCol, {
@@ -66,6 +67,23 @@ export async function findTournamentByJoinCode(code: string): Promise<WithId<Tou
 
 export function updateTournamentStatus(id: string, status: TournamentStatus): Promise<void> {
   return updateDoc(doc(tournamentsCol, id), { status });
+}
+
+/**
+ * Edits a tournament's name and/or event date after the fact — e.g. setting a
+ * date that wasn't filled in at creation, or fixing a typo in the name. Pass
+ * `eventDate: null` to clear a previously-set date.
+ */
+export function updateTournamentInfo(
+  id: string,
+  changes: { name?: string; eventDate?: string | null },
+): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if (changes.name !== undefined) payload.name = changes.name;
+  if (changes.eventDate !== undefined) {
+    payload.eventDate = changes.eventDate === null ? deleteField() : changes.eventDate;
+  }
+  return updateDoc(doc(tournamentsCol, id), payload);
 }
 
 /**

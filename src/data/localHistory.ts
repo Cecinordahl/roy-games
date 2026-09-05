@@ -10,6 +10,9 @@ export interface RecentTournament {
   name: string;
   joinCode: string;
   game?: GameType;
+  /** Best-effort cache of the organizer-set event date — may go stale if edited
+   *  elsewhere without revisiting; `listAllTournaments` is the source of truth. */
+  eventDate?: string;
   visitedAt: number;
 }
 

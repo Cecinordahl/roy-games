@@ -51,6 +51,7 @@ export function NewTournamentPage() {
   const { uid } = useAuth();
   const players = usePlayers();
   const [name, setName] = useState('');
+  const [eventDate, setEventDate] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,8 +94,14 @@ export function NewTournamentPage() {
       const playerNames = Object.fromEntries(
         players.filter((p) => selected.has(p.id)).map((p) => [p.id, p.data.name]),
       );
-      const { id, joinCode } = await createTournament(name.trim(), game, uid, playerNames);
-      rememberTournament({ id, name: name.trim(), joinCode, game });
+      const { id, joinCode } = await createTournament(
+        name.trim(),
+        game,
+        uid,
+        playerNames,
+        eventDate ? { eventDate } : undefined,
+      );
+      rememberTournament({ id, name: name.trim(), joinCode, game, eventDate: eventDate || undefined });
       navigate(game === 'bowling' ? `/t/${id}/setup-bowling` : `/t/${id}/setup`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Noe gikk galt.');
@@ -118,6 +125,19 @@ export function NewTournamentPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="F.eks. Sommerbridge 2026"
+          />
+        </RetroPanel>
+
+        <RetroPanel>
+          <label className="block text-sm font-semibold" htmlFor="eventDate">
+            Dato (valgfritt)
+          </label>
+          <input
+            id="eventDate"
+            type="date"
+            className="mt-1 border-2 border-ink bg-white px-2 py-2"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
           />
         </RetroPanel>
 

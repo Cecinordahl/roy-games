@@ -60,6 +60,7 @@ export function BocciaSetupPage() {
   }
 
   const [name, setName] = useState('');
+  const [eventDate, setEventDate] = useState('');
   const [mode, setMode] = useState<BocciaParticipantMode>('players');
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [teams, setTeams] = useState<TeamDraft[]>([]);
@@ -169,12 +170,16 @@ export function BocciaSetupPage() {
         teamRosters = Object.fromEntries(teams.map((t) => [t.id, t.memberIds]));
       }
 
+      const extra: { teamRosters?: Record<string, string[]>; eventDate?: string } = {};
+      if (teamRosters) extra.teamRosters = teamRosters;
+      if (eventDate) extra.eventDate = eventDate;
+
       const { id, joinCode } = await createTournament(
         name.trim(),
         'boccia',
         uid,
         participantNames,
-        teamRosters ? { teamRosters } : undefined,
+        Object.keys(extra).length > 0 ? extra : undefined,
       );
 
       const stageId = await createStage(id, {
@@ -191,7 +196,7 @@ export function BocciaSetupPage() {
         status: 'active',
       });
       await updateTournamentStatus(id, 'active');
-      rememberTournament({ id, name: name.trim(), joinCode, game: 'boccia' });
+      rememberTournament({ id, name: name.trim(), joinCode, game: 'boccia', eventDate: eventDate || undefined });
       navigate(`/t/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Noe gikk galt.');
@@ -215,6 +220,19 @@ export function BocciaSetupPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="F.eks. Hagefest 2026"
+          />
+        </RetroPanel>
+
+        <RetroPanel>
+          <label className="block text-sm font-semibold" htmlFor="eventDate">
+            Dato (valgfritt)
+          </label>
+          <input
+            id="eventDate"
+            type="date"
+            className="mt-1 border-2 border-ink bg-white px-2 py-2"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
           />
         </RetroPanel>
 

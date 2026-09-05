@@ -84,9 +84,10 @@ short paragraphs.
 
 ## 5. Data minimisation
 
-Confirmed: the only data stored is player names and game results (bids, tricks,
-scores, table/group assignments, tournament names, join codes). Specifically absent,
-by design:
+Confirmed: the only data stored is player names, game results (bids, tricks,
+scores, table/group assignments, tournament names, join codes), and — if the
+organizer chooses to fill it in — an optional calendar date for when the
+tournament happened. Specifically absent, by design:
 
 - No analytics, telemetry, or error-reporting SDKs of any kind.
 - No IP address logging beyond whatever Firebase/Vercel retain at the

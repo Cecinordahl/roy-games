@@ -5,15 +5,23 @@ import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { TrashIcon } from '../components/layout/TrashIcon';
 import { forgetTournament, getRecentTournaments } from '../data/localHistory';
 import { deleteTournament, listAllTournaments } from '../data/tournamentsRepo';
+import { formatNorwegianDate } from '../domain/dates';
 import type { GameType } from '../domain/types';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useIsAdmin } from '../hooks/useIsAdmin';
+
+const GAME_ICONS: Record<GameType, string> = {
+  bondebridge: '🃏',
+  bowling: '🎳',
+  boccia: '🎯',
+};
 
 interface TournamentRow {
   id: string;
   name: string;
   joinCode: string;
   game?: GameType;
+  eventDate?: string;
 }
 
 function TournamentRowItem({
@@ -30,9 +38,12 @@ function TournamentRowItem({
       <RetroPanel className="flex items-center justify-between gap-2 hover:bg-sage/20">
         <div>
           <p className="font-semibold">
-            {tournament.game === 'bowling' ? '🎳' : '🃏'} {tournament.name}
+            {GAME_ICONS[tournament.game ?? 'bondebridge']} {tournament.name}
           </p>
-          <p className="text-xs text-ink/60">Kode: {tournament.joinCode}</p>
+          <p className="text-xs text-ink/60">
+            Kode: {tournament.joinCode}
+            {tournament.eventDate && <> · {formatNorwegianDate(tournament.eventDate)}</>}
+          </p>
         </div>
         {showDelete && (
           <button
@@ -61,7 +72,15 @@ export function HistoryListPage() {
       return;
     }
     listAllTournaments().then((tournaments) =>
-      setAllTournaments(tournaments.map((t) => ({ id: t.id, name: t.data.name, joinCode: t.data.joinCode, game: t.data.game }))),
+      setAllTournaments(
+        tournaments.map((t) => ({
+          id: t.id,
+          name: t.data.name,
+          joinCode: t.data.joinCode,
+          game: t.data.game,
+          eventDate: t.data.eventDate,
+        })),
+      ),
     );
   }, [isAdmin]);
 
