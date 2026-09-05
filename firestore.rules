@@ -24,7 +24,7 @@ service cloud.firestore {
     // redeploy with `firebase deploy --only firestore:rules`. Add more UIDs to
     // the list for additional admins.
     function isAdmin() {
-      return isSignedIn() && request.auth.uid in ['REPLACE_WITH_ADMIN_UID'];
+      return isSignedIn() && request.auth.uid in ['dnA0NMKpV0SOM2DlIHl4GwJBlqt2'];
     }
 
     function isOrganizer(tournamentId) {
