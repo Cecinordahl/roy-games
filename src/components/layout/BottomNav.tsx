@@ -8,7 +8,7 @@ const items = [
 
 export function BottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t-2 border-ink bg-surface">
+    <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-2 border-ink bg-surface">
       {items.map((item) => (
         <NavLink
           key={item.to}

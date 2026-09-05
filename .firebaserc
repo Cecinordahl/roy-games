@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "roy-games-dev"
-  }
+    "default": "roy-games-dev",
+    "rg": "roy-games-b7055"
+  },
+  "targets": {},
+  "etags": {}
 }

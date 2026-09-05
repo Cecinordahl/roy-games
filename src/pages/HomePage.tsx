@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import familyCardTable from '../assets/family-card-table.jpg';
 import { RetroButton } from '../components/layout/RetroButton';
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
@@ -56,6 +57,11 @@ export function HomePage() {
   return (
     <div>
       <ScreenHeader title="Roy Games" subtitle="Scorekeeping for Bondebridge-turneringer" />
+      <img
+        src={familyCardTable}
+        alt="Pikselillustrasjon av en familie som spiller kort rundt et bord"
+        className="w-full border-b-2 border-ink bg-cream"
+      />
       <div className="space-y-4 p-4">
         {!bannerDismissed && (
           <RetroPanel className="bg-yellow text-sm">
