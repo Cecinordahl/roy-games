@@ -61,7 +61,7 @@ function TableSummaryCard({
         </p>
         {leader && (
           <p className="mt-1 text-sm">
-            I ledelsen: {playerNames[leader.playerId] ?? leader.playerId} ({leader.total} p)
+            {table.data.status === 'complete' ? 'Vinner' : 'I ledelsen'}: {playerNames[leader.playerId] ?? leader.playerId} ({leader.total} p)
           </p>
         )}
       </RetroPanel>

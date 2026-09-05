@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '../components/layout/BackLink';
-import { RetroButton } from '../components/layout/RetroButton';
+import { RetroButton, retroButtonClasses } from '../components/layout/RetroButton';
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { BocciaRoundForm } from '../components/round/BocciaRoundForm';
 import { RoundList } from '../components/round/RoundList';
 import { StandingsTable } from '../components/standings/StandingsTable';
 import { saveRound } from '../data/roundsRepo';
+import { updateStage } from '../data/stagesRepo';
 import { takeOverNoteTaking, updateTable } from '../data/tablesRepo';
+import { updateTournamentStatus } from '../data/tournamentsRepo';
 import { computeRoundScores } from '../domain/boccia/scoring';
 import { computeStandings } from '../domain/standings';
 import { useAuth } from '../hooks/useAuth';
@@ -24,6 +26,7 @@ export function BocciaCourtPage() {
     tableId: string;
   }>();
   const { uid } = useAuth();
+  const navigate = useNavigate();
   const tournament = useTournament(tournamentId);
   const table = useTable(tournamentId, stageId, tableId);
   const rounds = useRounds(tournamentId, stageId, tableId);
@@ -87,7 +90,13 @@ export function BocciaCourtPage() {
       const updatedStandings = computeStandings(updatedRounds, table.data.playerIds);
       const leaderTotal = updatedStandings[0]?.total ?? 0;
       if (targetScore !== undefined && leaderTotal >= targetScore) {
+        // Boccia is always a single stage/table, so reaching the target finishes
+        // the whole tournament, not just this table — go straight to the podium.
         await updateTable(tournamentId, stageId, tableId, { status: 'complete' });
+        await updateStage(tournamentId, stageId, { status: 'complete' });
+        await updateTournamentStatus(tournamentId, 'complete');
+        navigate(`/t/${tournamentId}/podium`);
+        return;
       }
     }
     setEditingRoundNumber(null);
@@ -136,7 +145,12 @@ export function BocciaCourtPage() {
         )}
 
         {isComplete && editingRoundNumber === null && (
-          <RetroPanel className="bg-sage/30 text-sm">Spillet er ferdig.</RetroPanel>
+          <RetroPanel className="bg-sage/30 text-sm">
+            <p>Spillet er ferdig.</p>
+            <Link to={`/t/${tournamentId}/podium`} className={retroButtonClasses('primary', 'mt-2 block w-full')}>
+              Vis pallen
+            </Link>
+          </RetroPanel>
         )}
 
         <RetroPanel>
