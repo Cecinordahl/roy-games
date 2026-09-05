@@ -100,9 +100,9 @@ export function StageSetupPage() {
         <ScreenHeader title="Konfigurasjon" />
         <p className="p-4 text-sm">
           Bare den som opprettet turneringen kan sette opp gruppespillet. Gå til{' '}
-          <a className="underline" href={`/t/${tournamentId}`}>
+          <Link className="underline" to={`/t/${tournamentId}`}>
             turneringen
-          </a>{' '}
+          </Link>{' '}
           for å se status.
         </p>
       </div>

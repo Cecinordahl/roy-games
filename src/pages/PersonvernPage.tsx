@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { BackLink } from '../components/layout/BackLink';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 
@@ -26,9 +27,9 @@ export function PersonvernPage() {
         </p>
         <p>Appen er laget for privat, familiær bruk — ikke for kommersielt formål eller offentlig bruk.</p>
         <p>
-          <a href="/admin" className="text-xs text-ink/40 underline">
+          <Link to="/admin" className="text-xs text-ink/40 underline">
             Administrator
-          </a>
+          </Link>
         </p>
       </div>
     </div>

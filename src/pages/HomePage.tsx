@@ -90,9 +90,9 @@ export function HomePage() {
         />
       </div>
       <p className="p-4 text-center">
-        <a href="/personvern" className="text-xs text-ink/50 underline">
+        <Link to="/personvern" className="text-xs text-ink/50 underline">
           Personvern
-        </a>
+        </Link>
       </p>
     </div>
   );

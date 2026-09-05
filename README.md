@@ -245,6 +245,12 @@ winners + 5/5 remaining, not 6/5" advancement arithmetic.
 7. Any time you push to your main branch afterwards, Vercel redeploys
    automatically.
 
+`vercel.json` in this repo rewrites every path to `index.html`, which React
+Router then handles client-side. Without it, opening a link directly (e.g.
+`/personvern`, or refreshing on any non-home page) would 404 — Vercel would try
+to find a matching file/route on its own server instead of letting the
+single-page app's router take over.
+
 ## Deviations from a literal reading of the spec
 
 A few implementation choices that aren't spelled out verbatim in the original brief
