@@ -6,6 +6,7 @@ import {
   getDocs,
   limit,
   onSnapshot,
+  orderBy,
   query,
   serverTimestamp,
   updateDoc,
@@ -63,6 +64,18 @@ export async function findTournamentByJoinCode(code: string): Promise<WithId<Tou
 
 export function updateTournamentStatus(id: string, status: TournamentStatus): Promise<void> {
   return updateDoc(doc(tournamentsCol, id), { status });
+}
+
+/**
+ * Every tournament ever created, newest first — not scoped to this device's local
+ * history. Firestore rules already let any signed-in device read the tournaments
+ * collection (per the join-code access model), so this isn't a new permission;
+ * it's just only surfaced in the UI for the admin, who's the one who actually
+ * needs to find and manage tournaments they didn't personally create or visit.
+ */
+export async function listAllTournaments(): Promise<WithId<TournamentDoc>[]> {
+  const snap = await getDocs(query(tournamentsCol, orderBy('createdAt', 'desc')));
+  return snap.docs.map((d) => ({ id: d.id, data: d.data() as TournamentDoc }));
 }
 
 /**

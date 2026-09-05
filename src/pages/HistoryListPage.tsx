@@ -1,17 +1,69 @@
-import { useState, type MouseEvent } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { TrashIcon } from '../components/layout/TrashIcon';
 import { forgetTournament, getRecentTournaments } from '../data/localHistory';
-import { deleteTournament } from '../data/tournamentsRepo';
+import { deleteTournament, listAllTournaments } from '../data/tournamentsRepo';
+import type { GameType } from '../domain/types';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useIsAdmin } from '../hooks/useIsAdmin';
+
+interface TournamentRow {
+  id: string;
+  name: string;
+  joinCode: string;
+  game?: GameType;
+}
+
+function TournamentRowItem({
+  tournament,
+  showDelete,
+  onDelete,
+}: {
+  tournament: TournamentRow;
+  showDelete: boolean;
+  onDelete: (e: MouseEvent, id: string, name: string) => void;
+}) {
+  return (
+    <Link to={`/t/${tournament.id}`}>
+      <RetroPanel className="flex items-center justify-between gap-2 hover:bg-sage/20">
+        <div>
+          <p className="font-semibold">
+            {tournament.game === 'bowling' ? '🎳' : '🃏'} {tournament.name}
+          </p>
+          <p className="text-xs text-ink/60">Kode: {tournament.joinCode}</p>
+        </div>
+        {showDelete && (
+          <button
+            type="button"
+            className="shrink-0 p-1 text-negative"
+            aria-label={`Slett ${tournament.name}`}
+            onClick={(e) => onDelete(e, tournament.id, tournament.name)}
+          >
+            <TrashIcon className="h-5 w-5" />
+          </button>
+        )}
+      </RetroPanel>
+    </Link>
+  );
+}
 
 export function HistoryListPage() {
   const isAdmin = useIsAdmin();
   const [recent, setRecent] = useState(getRecentTournaments);
+  const [allTournaments, setAllTournaments] = useState<TournamentRow[] | null>(null);
   const { confirm, dialog } = useConfirmDialog();
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAllTournaments(null);
+      return;
+    }
+    listAllTournaments().then((tournaments) =>
+      setAllTournaments(tournaments.map((t) => ({ id: t.id, name: t.data.name, joinCode: t.data.joinCode, game: t.data.game }))),
+    );
+  }, [isAdmin]);
 
   async function handleDelete(e: MouseEvent, id: string, name: string) {
     e.preventDefault();
@@ -26,6 +78,7 @@ export function HistoryListPage() {
     await deleteTournament(id);
     forgetTournament(id);
     setRecent(getRecentTournaments());
+    setAllTournaments((prev) => prev?.filter((t) => t.id !== id) ?? null);
   }
 
   return (
@@ -40,31 +93,31 @@ export function HistoryListPage() {
             <ul className="space-y-2">
               {recent.map((t) => (
                 <li key={t.id}>
-                  <Link to={`/t/${t.id}`}>
-                    <RetroPanel className="flex items-center justify-between gap-2 hover:bg-sage/20">
-                      <div>
-                        <p className="font-semibold">
-                          {t.game === 'bowling' ? '🎳' : '🃏'} {t.name}
-                        </p>
-                        <p className="text-xs text-ink/60">Kode: {t.joinCode}</p>
-                      </div>
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          className="shrink-0 p-1 text-negative"
-                          aria-label={`Slett ${t.name}`}
-                          onClick={(e) => handleDelete(e, t.id, t.name)}
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      )}
-                    </RetroPanel>
-                  </Link>
+                  <TournamentRowItem tournament={t} showDelete={isAdmin} onDelete={handleDelete} />
                 </li>
               ))}
             </ul>
           )}
         </div>
+
+        {isAdmin && (
+          <div>
+            <h2 className="mb-2 font-pixel text-xs">Alle turneringer (admin)</h2>
+            {allTournaments === null ? (
+              <p className="text-sm text-ink/60">Laster …</p>
+            ) : allTournaments.length === 0 ? (
+              <p className="text-sm text-ink/60">Ingen turneringer ennå.</p>
+            ) : (
+              <ul className="space-y-2">
+                {allTournaments.map((t) => (
+                  <li key={t.id}>
+                    <TournamentRowItem tournament={t} showDelete onDelete={handleDelete} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
       {dialog}
     </div>
