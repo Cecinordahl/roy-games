@@ -5,6 +5,7 @@ import { RetroButton, retroButtonClasses } from '../components/layout/RetroButto
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { RetroSelect } from '../components/layout/RetroSelect';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
+import { GroupsEditor } from '../components/setup/GroupsEditor';
 import { maxCards, buildRoundSequence } from '../domain/bondebridge/rounds';
 import {
   distributeGroups,
@@ -73,6 +74,23 @@ export function StageSetupPage() {
     setGroups(newGroups);
     setNoteTakers(newGroups.map((g) => pickNoteTaker(g, eligibleIds)));
   }
+
+  function movePlayer(playerId: string, fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) return;
+    setGroups((prev) => {
+      const next = prev.map((g) => [...g]);
+      next[fromIndex] = next[fromIndex].filter((id) => id !== playerId);
+      next[toIndex] = [...next[toIndex], playerId];
+      return next;
+    });
+  }
+
+  // Keeps each group's note taker valid after a manual move — only re-picks when
+  // the previously assigned note taker no longer sits in that group.
+  useEffect(() => {
+    setNoteTakers((prev) => groups.map((g, i) => (g.includes(prev[i]) ? prev[i] : pickNoteTaker(g, eligibleIds))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups]);
 
   if (tournament === undefined) return <p className="p-4">Laster …</p>;
   if (tournament === null) return <p className="p-4">Fant ikke turneringen.</p>;
@@ -248,45 +266,18 @@ export function StageSetupPage() {
           </RetroSelect>
         </RetroPanel>
 
-        <RetroPanel>
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold">Grupper</p>
-            <RetroButton
-              type="button"
-              variant="secondary"
-              onClick={() => groupCount !== null && reshuffle(groupCount)}
-            >
-              Stokke om
-            </RetroButton>
-          </div>
-          <div className="space-y-3">
-            {groups.map((group, i) => (
-              <div key={i} className="border-2 border-ink/30 p-3">
-                <p className="text-xs font-semibold text-ink/70">Gruppe {i + 1}</p>
-                <ul className="mt-1 text-sm">
-                  {group.map((id) => (
-                    <li key={id}>{playerNames[id] ?? id}</li>
-                  ))}
-                </ul>
-                <label className="mb-1 mt-2 block text-xs font-semibold text-ink/80" htmlFor={`noteTaker-${i}`}>
-                  Notatfører
-                </label>
-                <RetroSelect
-                  id={`noteTaker-${i}`}
-                  value={noteTakers[i]}
-                  onChange={(e) => setNoteTakers((prev) => prev.map((v, idx) => (idx === i ? e.target.value : v)))}
-                >
-                  {group.map((id) => (
-                    <option key={id} value={id}>
-                      {playerNames[id] ?? id}
-                      {!eligibleIds.has(id) ? ' (ikke satt som notatfører-kandidat)' : ''}
-                    </option>
-                  ))}
-                </RetroSelect>
-              </div>
-            ))}
-          </div>
-        </RetroPanel>
+        <GroupsEditor
+          groups={groups}
+          noteTakers={noteTakers}
+          playerNames={playerNames}
+          eligibleIds={eligibleIds}
+          groupLabel="Gruppe"
+          onReshuffle={() => groupCount !== null && reshuffle(groupCount)}
+          onMovePlayer={movePlayer}
+          onNoteTakerChange={(index, playerId) =>
+            setNoteTakers((prev) => prev.map((v, idx) => (idx === index ? playerId : v)))
+          }
+        />
 
         {error && <p className="text-sm text-negative">{error}</p>}
         <RetroButton type="button" className="w-full" onClick={handleStart} disabled={saving || groups.length === 0}>

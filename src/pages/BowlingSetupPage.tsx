@@ -5,6 +5,7 @@ import { RetroButton, retroButtonClasses } from '../components/layout/RetroButto
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { RetroSelect } from '../components/layout/RetroSelect';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
+import { GroupsEditor } from '../components/setup/GroupsEditor';
 import { createStage } from '../data/stagesRepo';
 import { createTable } from '../data/tablesRepo';
 import { updateTournamentStatus } from '../data/tournamentsRepo';
@@ -66,6 +67,23 @@ export function BowlingSetupPage() {
     setLanes(newLanes);
     setNoteTakers(newLanes.map((lane) => pickNoteTaker(lane, eligibleIds)));
   }
+
+  function movePlayer(playerId: string, fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) return;
+    setLanes((prev) => {
+      const next = prev.map((lane) => [...lane]);
+      next[fromIndex] = next[fromIndex].filter((id) => id !== playerId);
+      next[toIndex] = [...next[toIndex], playerId];
+      return next;
+    });
+  }
+
+  // Keeps each lane's note taker valid after a manual move — only re-picks when
+  // the previously assigned note taker no longer sits on that lane.
+  useEffect(() => {
+    setNoteTakers((prev) => lanes.map((lane, i) => (lane.includes(prev[i]) ? prev[i] : pickNoteTaker(lane, eligibleIds))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lanes]);
 
   if (tournament === undefined) return <p className="p-4">Laster …</p>;
   if (tournament === null) return <p className="p-4">Fant ikke turneringen.</p>;
@@ -210,41 +228,18 @@ export function BowlingSetupPage() {
           )}
         </RetroPanel>
 
-        <RetroPanel>
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold">Baner</p>
-            <RetroButton type="button" variant="secondary" onClick={() => laneCount !== null && reshuffle(laneCount)}>
-              Stokke om
-            </RetroButton>
-          </div>
-          <div className="space-y-3">
-            {lanes.map((lane, i) => (
-              <div key={i} className="border-2 border-ink/30 p-3">
-                <p className="text-xs font-semibold text-ink/70">Bane {i + 1}</p>
-                <ul className="mt-1 text-sm">
-                  {lane.map((id) => (
-                    <li key={id}>{playerNames[id] ?? id}</li>
-                  ))}
-                </ul>
-                <label className="mb-1 mt-2 block text-xs font-semibold text-ink/80" htmlFor={`noteTaker-${i}`}>
-                  Notatfører
-                </label>
-                <RetroSelect
-                  id={`noteTaker-${i}`}
-                  value={noteTakers[i]}
-                  onChange={(e) => setNoteTakers((prev) => prev.map((v, idx) => (idx === i ? e.target.value : v)))}
-                >
-                  {lane.map((id) => (
-                    <option key={id} value={id}>
-                      {playerNames[id] ?? id}
-                      {!eligibleIds.has(id) ? ' (ikke satt som notatfører-kandidat)' : ''}
-                    </option>
-                  ))}
-                </RetroSelect>
-              </div>
-            ))}
-          </div>
-        </RetroPanel>
+        <GroupsEditor
+          groups={lanes}
+          noteTakers={noteTakers}
+          playerNames={playerNames}
+          eligibleIds={eligibleIds}
+          groupLabel="Bane"
+          onReshuffle={() => laneCount !== null && reshuffle(laneCount)}
+          onMovePlayer={movePlayer}
+          onNoteTakerChange={(index, playerId) =>
+            setNoteTakers((prev) => prev.map((v, idx) => (idx === index ? playerId : v)))
+          }
+        />
 
         {error && <p className="text-sm text-negative">{error}</p>}
         <RetroButton type="button" className="w-full" onClick={handleStart} disabled={saving || lanes.length === 0}>
