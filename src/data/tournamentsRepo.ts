@@ -34,6 +34,7 @@ export async function createTournament(
   game: GameType,
   organizerUid: string,
   playerNames: Record<string, string>,
+  extra?: Partial<Pick<TournamentDoc, 'teamRosters'>>,
 ): Promise<{ id: string; joinCode: string }> {
   const joinCode = await generateUniqueJoinCode();
   const ref = await addDoc(tournamentsCol, {
@@ -45,6 +46,7 @@ export async function createTournament(
     status: 'setup' satisfies TournamentStatus,
     playerIds: Object.keys(playerNames),
     playerNames,
+    ...extra,
   });
   return { id: ref.id, joinCode };
 }

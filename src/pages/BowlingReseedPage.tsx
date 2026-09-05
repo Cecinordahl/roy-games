@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '../components/layout/BackLink';
+import { LaneRoundsCollector, type LaneResult } from '../components/bowling/StandingsCollectors';
 import { RetroButton } from '../components/layout/RetroButton';
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { StandingsTable } from '../components/standings/StandingsTable';
-import { StageLanesCollector, type LaneResult } from '../components/bowling/StandingsCollectors';
 import { reshuffleIntoNextStage } from '../data/bowlingReshuffle';
 import { updateStage } from '../data/stagesRepo';
 import { updateTournamentStatus } from '../data/tournamentsRepo';
 import { useAuth } from '../hooks/useAuth';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { usePlayers } from '../hooks/usePlayers';
-import { useStage, useStages } from '../hooks/useStages';
+import { useStage } from '../hooks/useStages';
 import { useTables } from '../hooks/useTables';
 import { useTournament } from '../hooks/useTournament';
 
@@ -22,14 +22,12 @@ export function BowlingReseedPage() {
   const { uid } = useAuth();
   const tournament = useTournament(tournamentId);
   const stage = useStage(tournamentId, stageId);
-  const stages = useStages(tournamentId);
   const currentStageTables = useTables(tournamentId, stageId);
   const players = usePlayers();
   const { confirm, dialog } = useConfirmDialog();
 
-  // Keyed by table id, across every stage played so far — summing every table's
-  // contribution per player gives the true cumulative total for the whole night,
-  // since a player sits at exactly one lane per stage.
+  // Keyed by table id, this stage only — each reshuffle starts the next stage's
+  // lanes at zero, so standings here never carry over previous rounds' totals.
   const [laneResults, setLaneResults] = useState<Record<string, LaneResult>>({});
   const [saving, setSaving] = useState(false);
 
@@ -47,15 +45,12 @@ export function BowlingReseedPage() {
   const allComplete = currentStageTables.length > 0 && currentStageTables.every((t) => t.data.status === 'complete');
   const eligibleIds = new Set(players.filter((p) => p.data.canBeNoteTaker).map((p) => p.id));
 
-  const cumulativeTotals: Record<string, number> = {};
-  for (const result of Object.values(laneResults)) {
-    for (const [playerId, total] of Object.entries(result.totalsByPlayer)) {
-      cumulativeTotals[playerId] = (cumulativeTotals[playerId] ?? 0) + total;
-    }
-  }
+  const currentStagePlayerIds = currentStageTables.flatMap((t) => t.data.playerIds);
+  const totalsByPlayer: Record<string, number> = {};
+  currentStageTables.forEach((t) => Object.assign(totalsByPlayer, laneResults[t.id]?.totalsByPlayer ?? {}));
 
-  const standings = tournament.data.playerIds
-    .map((playerId) => ({ playerId, total: cumulativeTotals[playerId] ?? 0 }))
+  const standings = currentStagePlayerIds
+    .map((playerId) => ({ playerId, total: totalsByPlayer[playerId] ?? 0 }))
     .sort((a, b) => b.total - a.total);
 
   async function handleNextRound() {
@@ -95,10 +90,10 @@ export function BowlingReseedPage() {
   return (
     <div>
       <BackLink to={`/t/${tournamentId}`} label="Til turneringen" />
-      <ScreenHeader title="Sammenlagt stilling" subtitle={`${tournament.data.name} — etter ${stage.data.name}`} />
+      <ScreenHeader title="Stilling denne runden" subtitle={`${tournament.data.name} — ${stage.data.name}`} />
       <div className="space-y-4 p-4">
-        {stages.map((s) => (
-          <StageLanesCollector key={s.id} tournamentId={tournamentId} stage={s} onResult={handleResult} />
+        {currentStageTables.map((t) => (
+          <LaneRoundsCollector key={t.id} tournamentId={tournamentId} stageId={stageId} table={t} onResult={handleResult} />
         ))}
 
         <RetroPanel>

@@ -80,8 +80,9 @@ export function StageStandingsPage() {
 
   const isOrganizer = !!uid && uid === tournament.data.organizerUid;
   const isBowling = tournament.data.game === 'bowling';
+  const isBoccia = tournament.data.game === 'boccia';
   const allComplete = tables.length > 0 && tables.every((t) => t.data.status === 'complete');
-  const laneWord = isBowling ? 'bane' : 'bord';
+  const laneWord = isBowling ? 'bane' : isBoccia ? 'runde' : 'bord';
   const eligibleIds = new Set(players.filter((p) => p.data.canBeNoteTaker).map((p) => p.id));
 
   const currentStagePlayerIds = tables.flatMap((t) => t.data.playerIds);
@@ -150,12 +151,14 @@ export function StageStandingsPage() {
                 Legg til runde med nye lag (beste sammen, dårligste sammen)
               </RetroButton>
             )}
-            <Link
-              to={`/t/${tournamentId}/stages/${stageId}/advance`}
-              className={retroButtonClasses(isBowling ? 'secondary' : 'primary', 'block w-full')}
-            >
-              Foreslå neste runde
-            </Link>
+            {!isBoccia && (
+              <Link
+                to={`/t/${tournamentId}/stages/${stageId}/advance`}
+                className={retroButtonClasses(isBowling ? 'secondary' : 'primary', 'block w-full')}
+              >
+                Foreslå neste runde
+              </Link>
+            )}
             <RetroButton type="button" variant="secondary" className="w-full" onClick={handleFinish}>
               Fullfør turnering
             </RetroButton>

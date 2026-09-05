@@ -9,6 +9,7 @@ import { forgetTournament } from '../data/localHistory';
 import { deleteTournament } from '../data/tournamentsRepo';
 import type { TableDoc, WithId } from '../data/types';
 import { computeStandings } from '../domain/standings';
+import type { GameType } from '../domain/types';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 import { useRounds } from '../hooks/useRounds';
@@ -16,18 +17,24 @@ import { useStages } from '../hooks/useStages';
 import { useTables } from '../hooks/useTables';
 import { useTournament } from '../hooks/useTournament';
 
+const TABLE_LINK_SEGMENT: Record<GameType, string> = {
+  bondebridge: 'tables',
+  bowling: 'lanes',
+  boccia: 'court',
+};
+
 function TableSummaryCard({
   tournamentId,
   stageId,
   table,
   playerNames,
-  isBowling,
+  game,
 }: {
   tournamentId: string;
   stageId: string;
   table: WithId<TableDoc>;
   playerNames: Record<string, string>;
-  isBowling: boolean;
+  game: GameType;
 }) {
   const rounds = useRounds(tournamentId, stageId, table.id);
   const standings = computeStandings(
@@ -36,9 +43,7 @@ function TableSummaryCard({
   );
   const leader = standings[0];
   const totalRounds = table.data.cardsPerRound?.length ?? table.data.roundCount ?? 1;
-  const linkPath = isBowling
-    ? `/t/${tournamentId}/stages/${stageId}/lanes/${table.id}`
-    : `/t/${tournamentId}/stages/${stageId}/tables/${table.id}`;
+  const linkPath = `/t/${tournamentId}/stages/${stageId}/${TABLE_LINK_SEGMENT[game]}/${table.id}`;
 
   return (
     <Link to={linkPath}>
@@ -81,9 +86,14 @@ export function TournamentOverviewPage() {
   const playerNames = tournament.data.playerNames;
   const allTablesComplete = tables.length > 0 && tables.every((t) => t.data.status === 'complete');
   const isBowling = tournament.data.game === 'bowling';
+  const isBoccia = tournament.data.game === 'boccia';
   const isReseedMode = isBowling && currentStage?.data.reshuffleMode === 'RESEED_EACH_ROUND';
-  const laneWord = isBowling ? 'baner' : 'bord';
-  const setupPath = isBowling ? `/t/${tournamentId}/setup-bowling` : `/t/${tournamentId}/setup`;
+  const laneWord = isBowling ? 'baner' : isBoccia ? 'runder' : 'bord';
+  const setupPath = isBowling
+    ? `/t/${tournamentId}/setup-bowling`
+    : isBoccia
+      ? '/tournaments/new-boccia'
+      : `/t/${tournamentId}/setup`;
   const standingsPath = currentStage
     ? isReseedMode
       ? `/t/${tournamentId}/stages/${currentStage.id}/reseed`
@@ -144,7 +154,7 @@ export function TournamentOverviewPage() {
                 stageId={currentStage.id}
                 table={t}
                 playerNames={playerNames}
-                isBowling={isBowling}
+                game={tournament.data.game}
               />
             ))}
 

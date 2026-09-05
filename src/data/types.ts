@@ -15,9 +15,13 @@ export interface TournamentDoc {
   organizerUid: string;
   createdAt: Timestamp;
   status: TournamentStatus;
+  /** Every scoring participant's id — individual player ids, or (Boccia team mode) synthetic team ids. */
   playerIds: string[];
-  /** Snapshot of names at creation time so history reads correctly after the name bank changes. */
+  /** Snapshot of names at creation time so history reads correctly after the name bank changes.
+   *  Also covers Boccia team names, keyed by the synthetic team id. */
   playerNames: Record<string, string>;
+  /** Boccia team mode only: which real player ids sit on each team id, frozen at creation for history. */
+  teamRosters?: Record<string, string[]>;
 }
 
 export type StageStatus = 'active' | 'complete';
@@ -37,7 +41,8 @@ export interface StageDoc {
 
   // --- Bowling-specific stage config ---
   reshuffleMode?: ReshuffleMode;
-  /** How many rounds this stage's lanes play before the organizer reshuffles/advances. */
+  /** How many rounds this stage's lanes play before the organizer reshuffles/advances.
+   *  Also used, more simply, as Boccia's fixed total round count (single stage, no reshuffle). */
   roundCount?: number;
 }
 
@@ -45,14 +50,14 @@ export type TableStatus = 'active' | 'complete';
 
 export interface TableDoc {
   name: string;
-  /** Seating order. */
+  /** Seating order (Bondebridge/Bowling), or the participant ids in Boccia. */
   playerIds: string[];
   noteTakerPlayerId: string;
   noteTakerUid: string;
   status: TableStatus;
   /** Bondebridge: full resolved card-count sequence, frozen at table creation. */
   cardsPerRound?: number[];
-  /** Bowling: how many rounds (games) this lane plays, frozen at table/lane creation. */
+  /** Bowling/Boccia: how many rounds this table plays, frozen at creation. */
   roundCount?: number;
 }
 
@@ -64,6 +69,9 @@ export interface RoundDoc {
   cards?: number;
   bids?: Record<string, number>;
   tricks?: Record<string, number>;
+  /** Boccia-only: the raw inputs `scores` was derived from, kept for editing/history. */
+  closestId?: string;
+  ballHitIds?: string[];
 }
 
 export interface WithId<T> {

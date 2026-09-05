@@ -2,6 +2,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { BottomNav } from './components/layout/BottomNav';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdvancementPage } from './pages/AdvancementPage';
+import { BocciaCourtPage } from './pages/BocciaCourtPage';
+import { BocciaSetupPage } from './pages/BocciaSetupPage';
 import { BowlingLanePage } from './pages/BowlingLanePage';
 import { BowlingReseedPage } from './pages/BowlingReseedPage';
 import { BowlingSetupPage } from './pages/BowlingSetupPage';
@@ -28,11 +30,13 @@ export default function App() {
             <Route path="/personvern" element={<PersonvernPage />} />
             <Route path="/admin" element={<AdminLoginPage />} />
             <Route path="/tournaments/new/:game" element={<NewTournamentPage />} />
+            <Route path="/tournaments/new-boccia" element={<BocciaSetupPage />} />
             <Route path="/t/:tournamentId/setup" element={<StageSetupPage />} />
             <Route path="/t/:tournamentId/setup-bowling" element={<BowlingSetupPage />} />
             <Route path="/t/:tournamentId" element={<TournamentOverviewPage />} />
             <Route path="/t/:tournamentId/stages/:stageId/tables/:tableId" element={<TablePage />} />
             <Route path="/t/:tournamentId/stages/:stageId/lanes/:tableId" element={<BowlingLanePage />} />
+            <Route path="/t/:tournamentId/stages/:stageId/court/:tableId" element={<BocciaCourtPage />} />
             <Route path="/t/:tournamentId/stages/:stageId/standings" element={<StageStandingsPage />} />
             <Route path="/t/:tournamentId/stages/:stageId/advance" element={<AdvancementPage />} />
             <Route path="/t/:tournamentId/stages/:stageId/reseed" element={<BowlingReseedPage />} />

@@ -7,7 +7,10 @@ export interface Player {
   canBeNoteTaker: boolean;
 }
 
-export type GameType = 'bondebridge' | 'bowling';
+export type GameType = 'bondebridge' | 'bowling' | 'boccia';
+
+/** Whether Boccia participants are individual players or ad-hoc teams of players. */
+export type BocciaParticipantMode = 'players' | 'teams';
 
 export type RoundSequenceMode = 'DESC' | 'ASC' | 'DESC_ASC' | 'ASC_DESC';
 export type SyncMode = 'SYNCED' | 'INDEPENDENT';

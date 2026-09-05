@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { StageLanesCollector, type LaneResult } from '../components/bowling/StandingsCollectors';
 import { BackLink } from '../components/layout/BackLink';
 import { RetroPanel } from '../components/layout/RetroPanel';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
@@ -12,42 +10,6 @@ import { useTables } from '../hooks/useTables';
 import { useTournament } from '../hooks/useTournament';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
-
-function CumulativePodium({
-  tournamentId,
-  playerIds,
-  playerNames,
-}: {
-  tournamentId: string;
-  playerIds: string[];
-  playerNames: Record<string, string>;
-}) {
-  const stages = useStages(tournamentId);
-  const [laneResults, setLaneResults] = useState<Record<string, LaneResult>>({});
-
-  function handleResult(tableId: string, result: LaneResult) {
-    setLaneResults((prev) => ({ ...prev, [tableId]: result }));
-  }
-
-  const cumulativeTotals: Record<string, number> = {};
-  for (const result of Object.values(laneResults)) {
-    for (const [playerId, total] of Object.entries(result.totalsByPlayer)) {
-      cumulativeTotals[playerId] = (cumulativeTotals[playerId] ?? 0) + total;
-    }
-  }
-  const standings: Standing[] = playerIds
-    .map((playerId) => ({ playerId, total: cumulativeTotals[playerId] ?? 0 }))
-    .sort((a, b) => b.total - a.total);
-
-  return (
-    <>
-      {stages.map((s) => (
-        <StageLanesCollector key={s.id} tournamentId={tournamentId} stage={s} onResult={handleResult} />
-      ))}
-      <PodiumBody standings={standings} playerNames={playerNames} caption="Sammenlagt for hele kvelden" />
-    </>
-  );
-}
 
 function SingleTablePodium({
   tournamentId,
@@ -69,19 +31,8 @@ function SingleTablePodium({
     rounds.map((r) => r.data),
     playerIds,
   );
-  return <PodiumBody standings={standings} playerNames={playerNames} caption={tableName} />;
-}
-
-function PodiumBody({
-  standings,
-  playerNames,
-  caption,
-}: {
-  standings: Standing[];
-  playerNames: Record<string, string>;
-  caption: string;
-}) {
   const top3 = standings.slice(0, 3);
+
   return (
     <>
       <div className="flex flex-col items-center gap-3">
@@ -95,9 +46,9 @@ function PodiumBody({
       </div>
 
       <RetroPanel>
-        <p className="mb-2 text-sm font-semibold">Full stilling — {caption}</p>
+        <p className="mb-2 text-sm font-semibold">Full stilling — {tableName}</p>
         <ol className="list-decimal space-y-1 pl-5 text-sm">
-          {standings.map((s) => (
+          {standings.map((s: Standing) => (
             <li key={s.playerId}>
               {playerNames[s.playerId] ?? s.playerId} — {s.total} p
             </li>
@@ -114,38 +65,30 @@ export function PodiumPage() {
   const stages = useStages(tournamentId);
   const finalStage = stages[stages.length - 1];
   const tables = useTables(tournamentId, finalStage?.id);
-  const winnersTable = tables.find((t) => t.data.name.startsWith('Vinner')) ?? tables[0];
+  // "Vinnerbord"/"Vinnerbane" for elimination-style final stages; "Bane 1" is
+  // always the top-ranked lane after a bowling re-seed reshuffle (see
+  // reshuffleIntoNextStage) — everyone still plays, this is the closest thing
+  // to a single "final table" to crown a podium from.
+  const winnersTable =
+    tables.find((t) => t.data.name.startsWith('Vinner')) ?? tables.find((t) => t.data.name === 'Bane 1') ?? tables[0];
 
   if (tournament === undefined) return <p className="p-4">Laster …</p>;
   if (tournament === null || !tournamentId) return <p className="p-4">Fant ikke turneringen.</p>;
-
-  const isReseedNight = tournament.data.game === 'bowling' && finalStage?.data.reshuffleMode === 'RESEED_EACH_ROUND';
-
-  if (!isReseedNight && !winnersTable) return <p className="p-4">Ingen resultater å vise ennå.</p>;
+  if (!winnersTable || !finalStage) return <p className="p-4">Ingen resultater å vise ennå.</p>;
 
   return (
     <div>
       <BackLink to={`/t/${tournamentId}`} label="Til turneringen" />
       <ScreenHeader title="Pallen" subtitle={tournament.data.name} />
       <div className="space-y-4 p-4">
-        {isReseedNight ? (
-          <CumulativePodium
-            tournamentId={tournamentId}
-            playerIds={tournament.data.playerIds}
-            playerNames={tournament.data.playerNames}
-          />
-        ) : (
-          winnersTable && (
-            <SingleTablePodium
-              tournamentId={tournamentId}
-              stageId={finalStage.id}
-              tableId={winnersTable.id}
-              tableName={winnersTable.data.name}
-              playerIds={winnersTable.data.playerIds}
-              playerNames={tournament.data.playerNames}
-            />
-          )
-        )}
+        <SingleTablePodium
+          tournamentId={tournamentId}
+          stageId={finalStage.id}
+          tableId={winnersTable.id}
+          tableName={winnersTable.data.name}
+          playerIds={winnersTable.data.playerIds}
+          playerNames={tournament.data.playerNames}
+        />
       </div>
     </div>
   );

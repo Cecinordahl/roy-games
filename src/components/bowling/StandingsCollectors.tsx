@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
-import type { StageDoc, TableDoc, WithId } from '../../data/types';
+import type { TableDoc, WithId } from '../../data/types';
 import { computeStandings } from '../../domain/standings';
 import { useRounds } from '../../hooks/useRounds';
-import { useTables } from '../../hooks/useTables';
 
 export interface LaneResult {
   totalsByPlayer: Record<string, number>;
@@ -11,7 +10,7 @@ export interface LaneResult {
 /**
  * One instance per lane (table), reporting its players' totals upward. Kept as a
  * component rather than a hook called in a loop so the number of hooks used stays
- * fixed per instance regardless of how many lanes/stages exist.
+ * fixed per instance regardless of how many lanes a stage has.
  */
 export function LaneRoundsCollector({
   tournamentId,
@@ -38,29 +37,4 @@ export function LaneRoundsCollector({
   }, [table.id, key]);
 
   return null;
-}
-
-/**
- * One instance per stage: fetches that stage's lanes, then collects each lane's
- * totals. Render one of these per stage to build a cumulative per-player total
- * across the whole tournament (bowling's "re-seed every round" mode needs this
- * since a player sits at a different lane each stage).
- */
-export function StageLanesCollector({
-  tournamentId,
-  stage,
-  onResult,
-}: {
-  tournamentId: string;
-  stage: WithId<StageDoc>;
-  onResult: (tableId: string, result: LaneResult) => void;
-}) {
-  const tables = useTables(tournamentId, stage.id);
-  return (
-    <>
-      {tables.map((t) => (
-        <LaneRoundsCollector key={t.id} tournamentId={tournamentId} stageId={stage.id} table={t} onResult={onResult} />
-      ))}
-    </>
-  );
 }

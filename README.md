@@ -5,7 +5,7 @@ purpose — the tournament/table/player scaffolding (`src/domain/`, outside the
 per-game subfolders) is game-agnostic, which is what let a second game
 (bowling) get added without touching the data model's shape or the Firestore rules.
 
-Two games are supported today:
+Three games are supported today:
 
 - **Bondis** (Bondebridge) — bid-and-trick card game scoring, group stage →
   winners table, configurable tie-break rules. Rules live in
@@ -18,6 +18,17 @@ Two games are supported today:
   several rounds, then top finishers advance into one final lane).
   Bowling-specific logic (just a score-range check) lives in
   `src/domain/bowling/`.
+- **Boccia** — simplest of the three: up to 4 players *or* up to 4 teams (a team
+  is a custom name plus members picked from the shared name bank), playing a
+  fixed number of rounds set up front, all against each other directly — no
+  groups, no lanes, no advancement. Each round the note taker records who was
+  closest to the jack (+1) and who (if anyone — zero, one, or several) hit it
+  directly (+1 each, stacking with the closest-ball point). A "team" is modelled
+  as a synthetic participant id folded into the same `playerNames` map every
+  other game uses, so standings/podium code needed no changes at all; team
+  membership itself is recorded separately (`teamRosters` on the tournament) so
+  history shows who was actually on each team. Scoring logic lives in
+  `src/domain/boccia/`.
 
 ## Why frontend-only (no backend)
 
@@ -271,13 +282,12 @@ A few implementation choices that aren't spelled out verbatim in the original br
   true by construction, not a special code path.
 - **`cardsPerRound` is resolved and frozen onto each table at creation time**, so
   the round sequence can't drift mid-tournament.
-- **Bowling's "re-seed every round" mode scores cumulatively across the whole
-  night, not per stage.** Every reshuffle creates a new stage (so a player's
-  lane can change each round), so standings there sum a player's score across
-  *every* stage/lane they've sat at (`src/components/bowling/StandingsCollectors.tsx`).
-  This is the one place scoring doesn't reset per stage — Bondebridge, and
-  bowling's "group stage then final lane" mode, both still reset at each new
-  stage.
+- **Every bowling reshuffle is a clean slate.** Both reshuffle modes create a new
+  stage and score it from zero — a player's total from a previous round/stage
+  never carries into the next one. Reshuffling ranks players by whichever
+  round/stage just finished, then that ranking (not cumulative points) decides
+  who ends up on the top lane vs. the bottom lane next. This matches
+  Bondebridge, which also always resets at each new stage.
 - **Deleting a tournament is admin-only, not organizer-self-service.** Whoever
   creates a tournament can still configure and run it, but can no longer delete
   it themselves — only the one admin account can. This is enforced in

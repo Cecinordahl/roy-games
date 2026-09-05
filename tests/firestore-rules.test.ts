@@ -8,9 +8,13 @@ import {
 } from '@firebase/rules-unit-testing';
 import { addDoc, collection, deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
-// Matches the placeholder in firestore.rules — a real deployment replaces this
-// with the actual admin account's UID, but the rule mechanism is the same either way.
-const ADMIN_UID = 'REPLACE_WITH_ADMIN_UID';
+const rulesText = readFileSync('firestore.rules', 'utf8');
+
+// Read whichever UID(s) are actually configured in isAdmin() — whether that's
+// still the placeholder or a real admin account's UID — so this test can never
+// drift out of sync with what's actually deployed.
+const adminUidsMatch = rulesText.match(/request\.auth\.uid in \[([^\]]*)]/);
+const ADMIN_UID = adminUidsMatch?.[1].split(',')[0].trim().replace(/'/g, '') ?? 'REPLACE_WITH_ADMIN_UID';
 
 let testEnv: RulesTestEnvironment;
 
@@ -18,7 +22,7 @@ beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'roy-games-test',
     firestore: {
-      rules: readFileSync('firestore.rules', 'utf8'),
+      rules: rulesText,
     },
   });
 });

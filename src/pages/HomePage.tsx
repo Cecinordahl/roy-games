@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import bocciaHero from '../assets/boccia-hero.jpg';
 import bondisHero from '../assets/bondis-hero.jpg';
 import bowlingLane from '../assets/bowling-lane.jpg';
 import { RetroButton } from '../components/layout/RetroButton';
@@ -87,6 +88,12 @@ export function HomePage() {
           image={bowlingLane}
           alt="Pikselillustrasjon av en familie som bowler"
           label="🎳 Bowling"
+        />
+        <GameTile
+          to="/tournaments/new-boccia"
+          image={bocciaHero}
+          alt="Pikselillustrasjon av barn som spiller boccia"
+          label="🎯 Boccia"
         />
       </div>
       <p className="p-4 text-center">
