@@ -179,7 +179,7 @@ export function AdvancementPage() {
         name: willHaveMoreTables ? `${winnerLabel} og videre spill` : winnerLabel,
         status: 'active',
         ...(isBowling
-          ? { reshuffleMode: 'GROUP_THEN_FINAL' as const, roundCount: stage.data.roundCount }
+          ? { reshuffleMode: 'GROUP_THEN_FINAL' as const, ...(stage.data.roundCount !== undefined ? { roundCount: stage.data.roundCount } : {}) }
           : { roundSequence: stage.data.roundSequence, syncMode: stage.data.syncMode, tieBreakRule: stage.data.tieBreakRule }),
       });
 
@@ -190,7 +190,9 @@ export function AdvancementPage() {
         noteTakerUid: uid,
         status: 'active',
         ...(isBowling
-          ? { roundCount: stage.data.roundCount ?? 1 }
+          ? stage.data.roundCount !== undefined
+            ? { roundCount: stage.data.roundCount }
+            : {}
           : { cardsPerRound: buildRoundSequence(maxCards(sortedWinners.length), stage.data.roundSequence!) }),
       });
 
@@ -204,7 +206,9 @@ export function AdvancementPage() {
             noteTakerUid: uid,
             status: 'active',
             ...(isBowling
-              ? { roundCount: stage.data.roundCount ?? 1 }
+              ? stage.data.roundCount !== undefined
+                ? { roundCount: stage.data.roundCount }
+                : {}
               : { cardsPerRound: buildRoundSequence(maxCards(group.length), stage.data.roundSequence!) }),
           });
         }

@@ -53,7 +53,9 @@ function TableSummaryCard({
           <span className="text-xs text-ink/60">
             {table.data.targetScore !== undefined
               ? `til ${table.data.targetScore} p`
-              : `${rounds.length}/${totalRounds ?? 1} runder`}
+              : totalRounds !== undefined
+                ? `${rounds.length}/${totalRounds} runder`
+                : `${rounds.length} runder`}
           </span>
         </div>
         <p className="mt-1 text-xs text-ink/60">

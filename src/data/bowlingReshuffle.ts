@@ -8,7 +8,8 @@ interface ReshuffleParams {
   previousStageId: string;
   previousStageIndex: number;
   reshuffleMode: ReshuffleMode;
-  roundCount: number;
+  /** Omit for "group stage then final lane" mode — those lanes finish manually via a "Ferdig" button, not a preset count. Always 1 for "re-seed every round". */
+  roundCount?: number;
   /** Players ranked best-first; split into lanes as contiguous rank blocks (best together, worst together). */
   sortedPlayerIds: string[];
   laneCount: number;
@@ -41,7 +42,7 @@ export async function reshuffleIntoNextStage({
     name: `Runde ${previousStageIndex + 2}`,
     status: 'active',
     reshuffleMode,
-    roundCount,
+    ...(roundCount !== undefined ? { roundCount } : {}),
   });
 
   for (let i = 0; i < newLanes.length; i++) {
@@ -50,7 +51,7 @@ export async function reshuffleIntoNextStage({
       playerIds: newLanes[i],
       noteTakerPlayerId: pickNoteTaker(newLanes[i], eligiblePlayerIds),
       noteTakerUid: organizerUid,
-      roundCount,
+      ...(roundCount !== undefined ? { roundCount } : {}),
       status: 'active',
     });
   }

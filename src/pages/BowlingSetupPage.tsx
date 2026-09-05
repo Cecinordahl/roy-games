@@ -22,8 +22,6 @@ import { useAuth } from '../hooks/useAuth';
 import { usePlayers } from '../hooks/usePlayers';
 import { useTournament } from '../hooks/useTournament';
 
-const DEFAULT_GROUP_ROUND_COUNT = 3;
-
 export function BowlingSetupPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const navigate = useNavigate();
@@ -33,7 +31,6 @@ export function BowlingSetupPage() {
 
   const [laneCount, setLaneCount] = useState<number | null>(null);
   const [reshuffleMode, setReshuffleMode] = useState<ReshuffleMode>('RESEED_EACH_ROUND');
-  const [roundCount, setRoundCount] = useState(DEFAULT_GROUP_ROUND_COUNT);
   const [lanes, setLanes] = useState<string[][]>([]);
   const [noteTakers, setNoteTakers] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -138,7 +135,10 @@ export function BowlingSetupPage() {
         name: 'Runde 1',
         status: 'active',
         reshuffleMode,
-        roundCount: reshuffleMode === 'RESEED_EACH_ROUND' ? 1 : roundCount,
+        // "Re-seed every round" is always exactly one round before reshuffling;
+        // "group stage then final lane" has no preset — each lane finishes
+        // manually via "Ferdig med denne banen" whenever the note taker is done.
+        ...(reshuffleMode === 'RESEED_EACH_ROUND' ? { roundCount: 1 } : {}),
       });
 
       for (let i = 0; i < lanes.length; i++) {
@@ -147,7 +147,7 @@ export function BowlingSetupPage() {
           playerIds: lanes[i],
           noteTakerPlayerId: noteTakers[i],
           noteTakerUid: uid,
-          roundCount: reshuffleMode === 'RESEED_EACH_ROUND' ? 1 : roundCount,
+          ...(reshuffleMode === 'RESEED_EACH_ROUND' ? { roundCount: 1 } : {}),
           status: 'active',
         });
       }
@@ -205,27 +205,12 @@ export function BowlingSetupPage() {
                 ingen ryker ut.
               </li>
               <li>
-                <strong>Gruppespill + finalebane</strong> — banene er faste over flere runder. Deretter går de beste
-                fra hver bane videre til én finalebane, akkurat som i Bondis.
+                <strong>Gruppespill + finalebane</strong> — banene er faste, men det er ikke noe fast antall runder.
+                Hver notatfører spiller så mange runder de vil og trykker «Ferdig med denne banen» når de er ferdige.
+                Når alle banene er ferdige, går de beste fra hver bane videre til én finalebane, akkurat som i Bondis.
               </li>
             </ul>
           </div>
-
-          {reshuffleMode === 'GROUP_THEN_FINAL' && (
-            <div className="mt-3">
-              <label className="block text-sm font-semibold" htmlFor="roundCount">
-                Antall runder før finale
-              </label>
-              <input
-                id="roundCount"
-                type="number"
-                min={1}
-                className="mt-1 w-24 border-2 border-ink bg-white px-2 py-1"
-                value={roundCount}
-                onChange={(e) => setRoundCount(Math.max(1, Number(e.target.value) || 1))}
-              />
-            </div>
-          )}
         </RetroPanel>
 
         <GroupsEditor

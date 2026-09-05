@@ -114,7 +114,7 @@ export function StageStandingsPage() {
         previousStageId: stageId,
         previousStageIndex: stage.data.index,
         reshuffleMode: 'GROUP_THEN_FINAL',
-        roundCount: stage.data.roundCount ?? 1,
+        roundCount: stage.data.roundCount,
         sortedPlayerIds: rankedPlayerIds,
         laneCount: tables.length,
         organizerUid: uid,

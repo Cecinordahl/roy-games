@@ -41,7 +41,9 @@ export function BowlingLanePage() {
 
   const playerNames = tournament.data.playerNames;
   const isNoteTaker = !!uid && uid === table.data.noteTakerUid;
-  const totalRounds = table.data.roundCount ?? 1;
+  // Undefined means "no preset" — the note taker plays as many rounds as they
+  // want and finishes the lane manually (see handleFinishLane).
+  const totalRounds = table.data.roundCount;
   const nextRoundNumber = rounds.length + 1;
   const isLaneComplete = table.data.status === 'complete';
 
@@ -56,7 +58,15 @@ export function BowlingLanePage() {
 
   async function handleAddRound() {
     if (!tournamentId || !stageId || !tableId) return;
-    await updateTable(tournamentId, stageId, tableId, { roundCount: totalRounds + 1, status: 'active' });
+    await updateTable(tournamentId, stageId, tableId, {
+      status: 'active',
+      ...(totalRounds !== undefined ? { roundCount: totalRounds + 1 } : {}),
+    });
+  }
+
+  async function handleFinishLane() {
+    if (!tournamentId || !stageId || !tableId) return;
+    await updateTable(tournamentId, stageId, tableId, { status: 'complete' });
   }
 
   async function handleSaveRound(scores: Record<string, number>) {
@@ -82,7 +92,7 @@ export function BowlingLanePage() {
 
     await saveRound(tournamentId, stageId, tableId, activeRoundNumber, { scores });
 
-    if (!isLaneComplete && activeRoundNumber === totalRounds) {
+    if (!isLaneComplete && totalRounds !== undefined && activeRoundNumber === totalRounds) {
       await updateTable(tournamentId, stageId, tableId, { status: 'complete' });
     }
     setEditingRoundNumber(null);
@@ -93,7 +103,11 @@ export function BowlingLanePage() {
       <BackLink to={`/t/${tournamentId}`} label="Til turneringen" />
       <ScreenHeader
         title={table.data.name}
-        subtitle={`${tournament.data.name} — runde ${Math.min(rounds.length + 1, totalRounds)} av ${totalRounds}`}
+        subtitle={
+          totalRounds !== undefined
+            ? `${tournament.data.name} — runde ${Math.min(rounds.length + 1, totalRounds)} av ${totalRounds}`
+            : `${tournament.data.name} — runde ${rounds.length + 1}`
+        }
       />
       <div className="space-y-4 p-4">
         <RetroPanel>
@@ -121,6 +135,12 @@ export function BowlingLanePage() {
             onSave={handleSaveRound}
             onCancel={editingRoundNumber !== null ? () => setEditingRoundNumber(null) : undefined}
           />
+        )}
+
+        {isNoteTaker && !isLaneComplete && totalRounds === undefined && rounds.length > 0 && (
+          <RetroButton type="button" variant="secondary" className="w-full" onClick={handleFinishLane}>
+            Ferdig med denne banen
+          </RetroButton>
         )}
 
         {isLaneComplete && editingRoundNumber === null && (

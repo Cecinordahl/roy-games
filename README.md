@@ -11,12 +11,14 @@ Three games are supported today:
   winners table, configurable tie-break rules. Rules live in
   `src/domain/bondebridge/`.
 - **Bowling** — much simpler: one raw score per player per round. The organizer
-  picks how lanes reshuffle between rounds: **re-seed every round** (rank
-  everyone globally after each game and regroup lanes by rank — nobody's
-  eliminated, the strongest players just increasingly end up on the same lane)
-  or **group stage then final lane** (same shape as Bondis: fixed lanes for
-  several rounds, then top finishers advance into one final lane).
-  Bowling-specific logic (just a score-range check) lives in
+  picks how lanes reshuffle between rounds: **re-seed every round** (always
+  exactly one round, then rank everyone globally and regroup lanes by
+  rank — nobody's eliminated, the strongest players just increasingly end up on
+  the same lane) or **group stage then final lane** (same shape as Bondis:
+  fixed lanes, but no preset round count — each note taker plays as many rounds
+  as they want and taps "Ferdig med denne banen" whenever they're done; once
+  every lane in the stage is finished, top finishers advance into one final
+  lane). Bowling-specific logic (just a score-range check) lives in
   `src/domain/bowling/`.
 - **Boccia** — simplest of the three: up to 4 players *or* up to 4 teams of at
   most 2 (a team's name defaults to its members' names, e.g. "Martin og
