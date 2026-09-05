@@ -1,0 +1,22 @@
+node_modules
+dist
+dist-ssr
+*.local
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+
+# Firebase
+.firebase
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# IDE
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

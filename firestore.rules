@@ -1,0 +1,57 @@
+rules_version = '2';
+
+// Access model (see README "Security model"): anonymous auth gives every device a
+// stable UID. Read access is gated at the app layer by knowledge of a tournament's
+// join code, not here — any signed-in device can read, per the documented
+// security-through-obscurity trade-off. Writes are enforced here:
+//   - a tournament's organizerUid is fixed at creation and only that device may
+//     reconfigure the tournament or its stages
+//   - a table's noteTakerUid may write that table's rounds; anyone may take over
+//     note-taking by changing noteTakerUid alone ("Ta over notatføring")
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOrganizer(tournamentId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.organizerUid == request.auth.uid;
+    }
+
+    // Shared family name bank — not owned by any one tournament or organizer.
+    match /players/{playerId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.organizerUid == request.auth.uid;
+      allow update, delete: if isOrganizer(tournamentId);
+
+      match /stages/{stageId} {
+        allow read: if isSignedIn();
+        allow write: if isOrganizer(tournamentId);
+
+        match /tables/{tableId} {
+          allow read: if isSignedIn();
+          allow create: if isOrganizer(tournamentId);
+          allow delete: if isOrganizer(tournamentId);
+          // Organizer can always reconfigure; the current note taker can update their
+          // own table; anyone signed in may take over by changing noteTakerUid alone.
+          allow update: if isOrganizer(tournamentId)
+            || resource.data.noteTakerUid == request.auth.uid
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['noteTakerUid']);
+
+          match /rounds/{roundId} {
+            allow read: if isSignedIn();
+            allow write: if isSignedIn() &&
+              get(/databases/$(database)/documents/tournaments/$(tournamentId)/stages/$(stageId)/tables/$(tableId)).data.noteTakerUid == request.auth.uid;
+          }
+        }
+      }
+    }
+  }
+}
